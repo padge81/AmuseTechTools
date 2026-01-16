@@ -1,6 +1,6 @@
 import os
 import hashlib
-from typing import Optional
+from typing import Optional, Tuple, List
 
 
 def edid_hash(edid: bytes) -> str:
@@ -16,13 +16,16 @@ def find_matching_edid(
     edid_dir: str
 ) -> Optional[str]:
     """
-    Compare EDID bytes against all .bin files in edid_dir.
+    Compare EDID bytes against saved .bin files.
 
     Returns:
-        filename if match found, else None
+        filename (str) if match found
+        None if no match
     """
     if not os.path.isdir(edid_dir):
         return None
+
+    live_hash = edid_hash(edid)
 
     for fname in sorted(os.listdir(edid_dir)):
         if not fname.lower().endswith(".bin"):
@@ -32,11 +35,19 @@ def find_matching_edid(
 
         try:
             with open(path, "rb") as f:
-                stored = f.read()
-        except Exception:
+                saved = f.read()
+        except OSError:
             continue
 
-        if edid_matches(edid, stored):
+        if len(saved) < 128:
+            continue
+
+        # Fast hash compare
+        if edid_hash(saved) != live_hash:
+            continue
+
+        # Absolute safety: byte-for-byte compare
+        if edid_matches(edid, saved):
             return fname
 
     return None
