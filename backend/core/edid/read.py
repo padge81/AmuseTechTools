@@ -1,15 +1,21 @@
-import base64
-from .i2c import read_block
-from .checksum import checksum_is_valid
-from .decode import decode_edid
+import os
+from .exceptions import EDIDReadError
+
+EDID_HEADER = b"\x00\xff\xff\xff\xff\xff\xff\x00"
+DEFAULT_DRM_PATH = "/sys/class/drm/card0-HDMI-A-1/edid"
 
 
-def read_edid(bus_num: int) -> dict:
-    raw = read_block(bus_num)
+def read_edid_drm(path: str = DEFAULT_DRM_PATH) -> bytes:
+    if not os.path.exists(path):
+        raise EDIDReadError(f"EDID path not found: {path}")
 
-    return {
-        "binary": raw,
-        "binary_b64": base64.b64encode(raw).decode(),
-        "checksum_valid": checksum_is_valid(raw),
-        "decoded": decode_edid(raw)
-    }
+    with open(path, "rb") as f:
+        data = f.read()
+
+    if len(data) < 128:
+        raise EDIDReadError("EDID too short")
+
+    if not data.startswith(EDID_HEADER):
+        raise EDIDReadError("Invalid EDID header")
+
+    return data

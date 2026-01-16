@@ -1,8 +1,6 @@
-def diff_edid(expected: bytes, actual: bytes) -> str:
-    out = []
-
-    for i, (a, b) in enumerate(zip(expected, actual)):
-        if a != b:
-            out.append(f"0x{i:02X}: {a:02X} != {b:02X}")
-
-    return "\n".join(out)
+def diff_edid(a: bytes, b: bytes) -> str:
+    diffs = []
+    for i, (x, y) in enumerate(zip(a, b)):
+        if x != y:
+            diffs.append(f"0x{i:02X}: {x:02X} != {y:02X}")
+    return "\n".join(diffs)

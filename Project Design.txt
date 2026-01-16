@@ -49,4 +49,93 @@ index.html 				-Logo top,
 				hopper.html				-Home button top right (to navigate back to index.html), Back buton top Left (to navigate back to Input-Output.html)
 										-Under construction image
 					-hopper.py
-			
+
+
+AmuseTechTools/
+├── README.md
+├── LICENSE
+├── .gitignore
+│
+├── backend/
+│   ├── app.py                  # Flask entry point (ONLY one)
+│   ├── requirements.txt
+│   │
+│   ├── routes/                 # Flask routes only
+│   │   ├── __init__.py
+│   │   ├── system.py           # reboot, shutdown, update, exit
+│   │   ├── edid.py
+│   │   ├── pattern.py
+│   │   ├── camera.py
+│   │   ├── input_output.py
+│   │   ├── basic_io.py
+│   │   ├── ticket_dispenser.py
+│   │   ├── coin_mech.py
+│   │   ├── card_reader.py
+│   │   └── hopper.py
+│   │
+│   ├── core/                   # actual logic (NO Flask here)
+│   │   ├── edid/
+│	│	│	├── __init__.py
+│	│	│	├── i2c.py          # Low-level I²C helpers
+│	│	│	├── read.py         # Read EDID
+│	│	│	├── write.py        # Write EDID
+│	│	│	├── checksum.py     # EDID checksum logic
+│	│	│	├── decode.py       # Human-readable decode
+│	│	│	├── compare.py      # Compare against saved files
+│	│	│	├── diff.py         # Byte-level diff
+│	│	│	└── exceptions.py
+│   │   │
+│   │   └── system/
+│   │       ├── power.py
+│   │       ├── update.py
+│   │       └── version.py
+│   │
+│   └── config/
+│       └── settings.py
+│
+├── frontend/
+│   ├── templates/
+│   │   ├── base.html
+│   │   ├── index.html
+│   │   ├── edid_tools.html
+│   │   ├── pattern_generator.html
+│   │   ├── camera.html
+│   │   ├── input_output.html
+│   │   ├── basic_io.html
+│   │   ├── ticket_dispenser.html
+│   │   ├── coin_mech.html
+│   │   ├── card_reader.html
+│   │   └── hopper.html
+│   │
+│   └── static/
+│       ├── css/
+│       │   └── kiosk.css
+│       ├── js/
+│       │   └── app.js
+│       └── images/
+│           └── under_construction.png
+│
+├── edid_files/
+│   └── README.md
+│
+├── system/
+│   ├── kiosk/
+│   │   ├── setup_kiosk.sh
+│   │   └── start_kiosk.sh
+│   │
+│   ├── bluetooth/
+│   │   └── EnableBluetoothPAN.sh
+│   │
+│   └── usb/
+│       └── setup_usb_gadget.sh
+│
+├── scripts/
+│   ├── install.sh
+│   ├── update.sh
+│   └── uninstall.sh
+│
+└── docs/
+    ├── architecture.md
+    ├── edid.md
+    ├── bluetooth_pan.md
+    └── kiosk.md

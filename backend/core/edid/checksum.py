@@ -1,15 +1,16 @@
-from .exceptions import EdidChecksumError
+from .exceptions import EDIDChecksumError
 
 
-def checksum_is_valid(edid: bytes) -> bool:
-    return sum(edid) % 256 == 0
+def validate_checksum(block: bytes) -> bool:
+    return sum(block) & 0xFF == 0
 
 
-def fix_checksum(edid: bytes) -> bytes:
-    if len(edid) != 128:
-        raise EdidChecksumError("Invalid EDID length")
+def validate_edid(edid: bytes) -> None:
+    if not validate_checksum(edid[:128]):
+        raise EDIDChecksumError("Base EDID checksum invalid")
 
-    edid = bytearray(edid)
-    checksum = (256 - (sum(edid[:-1]) % 256)) % 256
-    edid[-1] = checksum
-    return bytes(edid)
+    ext_count = edid[126]
+    for i in range(ext_count):
+        block = edid[128 + i*128 : 256 + i*128]
+        if not validate_checksum(block):
+            raise EDIDChecksumError(f"Extension block {i} checksum invalid")
