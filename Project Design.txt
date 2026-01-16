@@ -1,0 +1,52 @@
+Create a web based app, designed around a pi3 running 32bit Pi OS port of Debian Trixie, using official pi 7" touch screen, switching screen and curser to run in portrait mode, using PAT to connect via blutooth from a phone (for headless operation).
+
+File structure / layout:
+
+index.html 				-Logo top, 
+						-buttons for each sub page stacked vertically
+						-Exit(web browser), Reboot (pi), Shutdown (pi) buttons across bottom.
+						-Version number and update button at very bottom (to update from github, https://github.com/padge81/AmuseTechTools
+	-index.py file to handle exit reboot and shutdown. update from git hub and any other feature used on index page		
+
+	edid_tools.html			-Home button top right (to navigate back to index.html)
+						-Read EDID button (compares contents of edid with the contents of each saved EDID file and outputs to Match Dialog, Displays read code in below window) Reset button (Clears Match dialog and code display window) and view toggle (Binary / Decoded)
+						-Match dialog (Display file name that matches read EDID, if no match found display "No Match Found")
+						-Window with read code view
+						-Save feature (greyed out if read code matches existing file, allows user to input a filename, does not allow existing file to be overwritten, saves with .bin extension (auto correct if user already includes .bin)
+						-Write Feature (Drop down of .bin files saved, write to EDID, Read and Verify EDID, Display in Read window and match dialog)
+						-Port selector (default 2)
+						-Floating status bar, (shows Read, write, Verify, error status)
+		-edid_tools.py file to handle Edid operations
+
+	pattern_generator.html	-Home button top right (to navigate back to index.html)
+						-Under construction image
+		-pattern_generator.py
+
+	camera.html			-Home button top right (to navigate back to index.html)
+						-Under construction image
+		-camera.py
+	
+	input_output.html	-Home button top right (to navigate back to index.html)
+						-buttons for each sub page stacked vertically
+		-input_output.py
+			
+				basic_io.html			-Home button top right (to navigate back to index.html), Back buton top Left (to navigate back to Input-Output.html)
+										-Under construction image
+					-basic_io.py
+				
+				ticket_dispenser.html	-Home button top right (to navigate back to index.html), Back buton top Left (to navigate back to Input-Output.html)
+										-Under construction image
+					-ticket_dispenser.py
+					
+				coinm_mech.html			-Home button top right (to navigate back to index.html), Back buton top Left (to navigate back to Input-Output.html)
+										-Under construction image
+					-CoinMech.py
+					
+				card_reader.html				-Home button top right (to navigate back to index.html), Back buton top Left (to navigate back to Input-Output.html)
+										-Under construction image
+					-card_reader.py
+					
+				hopper.html				-Home button top right (to navigate back to index.html), Back buton top Left (to navigate back to Input-Output.html)
+										-Under construction image
+					-hopper.py
+			
