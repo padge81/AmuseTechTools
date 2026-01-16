@@ -1,7 +1,7 @@
 from .read import read_edid_drm
 from .write import write_edid
 from .checksum import validate_edid, validate_checksum
-from .decode import decode_basic
+from .decode import decode_basic, edid_to_hex
 from .compare import find_matching_edid
 from .diff import diff_edid
 from .exceptions import EDIDReadError, EDIDWriteError
@@ -12,6 +12,7 @@ __all__ = [
     "validate_edid",
     "validate_checksum",
     "decode_basic",
+    "edid_to_hex",
     "find_matching_edid",
     "diff_edid",
     "EDIDReadError",

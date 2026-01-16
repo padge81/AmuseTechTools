@@ -15,11 +15,13 @@ def decode_basic(edid: bytes) -> dict:
     }
 
 
-def edid_to_hex(edid: bytes) -> str:
+def edid_to_hex(edid: bytes, width: int = 16) -> str:
+    """
+    Convert EDID bytes to formatted hex string.
+    """
     lines = []
-    for i in range(0, len(edid), 16):
-        chunk = edid[i:i+16]
-        lines.append(
-            f"{i:02X}: " + " ".join(f"{b:02X}" for b in chunk)
-        )
+    for i in range(0, len(edid), width):
+        chunk = edid[i:i + width]
+        line = " ".join(f"{b:02x}" for b in chunk)
+        lines.append(line)
     return "\n".join(lines)
