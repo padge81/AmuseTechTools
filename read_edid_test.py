@@ -1,40 +1,66 @@
 #!/usr/bin/env python3
-from smbus2 import SMBus, i2c_msg
 
-EDID_I2C_ADDR = 0x50
-EDID_LENGTH = 128
-I2C_BUS = 2   # default on Pi for HDMI EDID (change if needed)
+import sys
+from backend.core.edid import (
+    read_edid_drm,
+    validate_edid,
+    decode_basic,
+    edid_to_hex,
+    edid_hash,
+    edid_matches,
+    diff_edid,
+    EDIDError,
+)
 
-def read_edid(bus_num=I2C_BUS):
-    data = bytearray()
+DRM_PATH = "/sys/class/drm/card0-HDMI-A-1/edid"
 
-    with SMBus(bus_num) as bus:
-        # EDID is read in 16-byte blocks
-        for offset in range(0, EDID_LENGTH, 16):
-            write = i2c_msg.write(EDID_I2C_ADDR, [offset])
-            read = i2c_msg.read(EDID_I2C_ADDR, 16)
-            bus.i2c_rdwr(write, read)
-            data.extend(read)
 
-    return bytes(data)
+def banner(title):
+    print("\n" + "=" * 60)
+    print(title)
+    print("=" * 60)
 
-def hexdump(data):
-    for i in range(0, len(data), 16):
-        row = data[i:i+16]
-        print(f"{i:02X}: " + " ".join(f"{b:02X}" for b in row))
 
-if __name__ == "__main__":
+def main():
     try:
-        edid = read_edid()
-        print("EDID read OK\n")
-        hexdump(edid)
+        banner("READ EDID")
+        edid = read_edid_drm(DRM_PATH)
+        print(f"EDID length: {len(edid)} bytes")
 
-        # Quick sanity check
-        if edid[:8] == b"\x00\xff\xff\xff\xff\xff\xff\x00":
-            print("\nValid EDID header detected ✔")
-        else:
-            print("\nWARNING: Invalid EDID header ✖")
+        banner("CHECKSUM VALIDATION")
+        validate_edid(edid)
+        print("✔ Checksum OK")
+
+        banner("DECODE BASIC INFO")
+        info = decode_basic(edid)
+        for k, v in info.items():
+            print(f"{k:15}: {v}")
+
+        banner("HEX DUMP (first 128 bytes)")
+        print(edid_to_hex(edid[:128]))
+
+        banner("HASH")
+        h = edid_hash(edid)
+        print(h)
+
+        banner("COMPARE / DIFF SELF TEST")
+        assert edid_matches(edid, edid)
+        print("✔ Self-compare OK")
+
+        diff = diff_edid(edid, edid)
+        print("✔ Diff empty" if not diff else diff)
+
+        banner("ALL TESTS PASSED")
+        return 0
+
+    except EDIDError as e:
+        print(f"❌ EDID ERROR: {e}")
+        return 1
 
     except Exception as e:
-        print("EDID read FAILED")
-        print(e)
+        print(f"❌ UNEXPECTED ERROR: {e}")
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())
