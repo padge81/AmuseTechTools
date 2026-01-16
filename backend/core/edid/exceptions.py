@@ -1,14 +1,18 @@
-class EdidError(Exception):
+class EDIDError(Exception):
+    """Base class for all EDID-related errors."""
     pass
 
 
-class EdidReadError(EdidError):
+class EDIDReadError(EDIDError):
+    """Raised when EDID reading fails."""
     pass
 
 
-class EdidWriteError(EdidError):
+class EDIDWriteError(EDIDError):
+    """Raised when EDID writing fails."""
     pass
 
 
-class EdidChecksumError(EdidError):
+class EDIDChecksumError(EDIDError):
+    """Raised when EDID checksum validation fails."""
     pass
