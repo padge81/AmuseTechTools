@@ -1,55 +1,107 @@
 Create a web based app, designed around a pi3 running 32bit Pi OS port of Debian Trixie, using official pi 7" touch screen, switching screen and curser to run in portrait mode, using PAT to connect via blutooth from a phone (for headless operation).
 
-File structure / layout:
+LAYOUT:
 
-index.html 				-Logo top, 
-						-buttons for each sub page stacked vertically
-						-Exit(web browser), Reboot (pi), Shutdown (pi) buttons across bottom.
-						-Version number and update button at very bottom (to update from github, https://github.com/padge81/AmuseTechTools
-	-index.py file to handle exit reboot and shutdown. update from git hub and any other feature used on index page		
+--Main menu--
+	index.html
+		Logo at top
+		Buttons (stacked vertically):
+			EDID Tools
+			Pattern Generator
+			Camera
+			Input / Output
+		Bottom bar:
+			Exit browser
+			Reboot Pi
+			Shutdown Pi
+		Footer:
+			Version number
+			“Update from GitHub” button
+			(https://github.com/padge81/AmuseTechTools)
 
-	edid_tools.html			-Home button top right (to navigate back to index.html)
-						-Read EDID button (compares contents of edid with the contents of each saved EDID file and outputs to Match Dialog, Displays read code in below window) Reset button (Clears Match dialog and code display window) and view toggle (Binary / Decoded)
-						-Match dialog (Display file name that matches read EDID, if no match found display "No Match Found")
-						-Window with read code view
-						-Save feature (greyed out if read code matches existing file, allows user to input a filename, does not allow existing file to be overwritten, saves with .bin extension (auto correct if user already includes .bin)
-						-Write Feature (Drop down of .bin files saved, write to EDID, Read and Verify EDID, Display in Read window and match dialog)
-						-Port selector (default 2)
-						-Floating status bar, (shows Read, write, Verify, error status)
-		-edid_tools.py file to handle Edid operations
+	-Backend logic-
+		system.py
+			Exit browser
+			Reboot
+			Shutdown
+			Git update
+			Version reporting
 
-	pattern_generator.html	-Home button top right (to navigate back to index.html)
-						-Under construction image
-		-pattern_generator.py
+--EDID tools--
+	edid_tools.html
+		Home button (top right)
+			Controls:
+			Read EDID
+			Reset
+			View toggle (Binary / Decoded)
+		Match dialog:
+			Displays filename if match found
+			Displays “No Match Found” otherwise
+		Read window:
+			Shows EDID content
+		Save feature:
+			Disabled if EDID matches existing file
+		User supplies filename
+			.bin extension enforced
+			No overwrite allowed
+		Write feature:
+			Dropdown of saved .bin files
+			Write → Read → Verify
+			Results displayed
+		Port selector:
+			Default port: 2
+		Floating status bar:
+			Read / Write / Verify / Error states
+	-Backend logic-
+		edid.py
+			Read EDID
+			Compare EDID
+			Decode EDID
+			Save EDID
+			Write + verify EDID
 
-	camera.html			-Home button top right (to navigate back to index.html)
-						-Under construction image
-		-camera.py
-	
-	input_output.html	-Home button top right (to navigate back to index.html)
-						-buttons for each sub page stacked vertically
-		-input_output.py
-			
-				basic_io.html			-Home button top right (to navigate back to index.html), Back buton top Left (to navigate back to Input-Output.html)
-										-Under construction image
-					-basic_io.py
-				
-				ticket_dispenser.html	-Home button top right (to navigate back to index.html), Back buton top Left (to navigate back to Input-Output.html)
-										-Under construction image
-					-ticket_dispenser.py
-					
-				coinm_mech.html			-Home button top right (to navigate back to index.html), Back buton top Left (to navigate back to Input-Output.html)
-										-Under construction image
-					-CoinMech.py
-					
-				card_reader.html				-Home button top right (to navigate back to index.html), Back buton top Left (to navigate back to Input-Output.html)
-										-Under construction image
-					-card_reader.py
-					
-				hopper.html				-Home button top right (to navigate back to index.html), Back buton top Left (to navigate back to Input-Output.html)
-										-Under construction image
-					-hopper.py
+--Pattern generator--
+	pattern_generator.html
+		Home button (top right)
+		Under construction image
+	-Backend-
+		pattern_generator.py (placeholder)
 
+--Camera--
+	camera.html
+		Home button (top right)
+		Under construction image
+	-Backend-
+		camera.py (placeholder)
+
+--Input / Output hub--
+	input_output.html
+		Home button (top right)
+		Buttons stacked vertically:
+			Basic IO
+			Ticket Dispenser
+			Coin Mech
+			Card Reader
+			Hopper
+	-Backend-
+		input_output.py (navigation only)
+
+--Submodules--
+Each submodule follows the same pattern:
+	basic_io.html
+	Home button (top right)
+	Back button (top left)
+	Under construction image
+
+--Backend--
+	basic_io.py
+Same structure for:
+	ticket_dispenser
+	coin_mech
+	card_reader
+	hopper
+
+FILESTRUCTURE:
 
 AmuseTechTools/
 ├── README.md
@@ -59,6 +111,7 @@ AmuseTechTools/
 ├── backend/
 │   ├── app.py                  # Flask entry point (ONLY one)
 │   ├── requirements.txt
+	├──	__init__.py
 │   │
 │   ├── routes/                 # Flask routes only
 │   │   ├── __init__.py
