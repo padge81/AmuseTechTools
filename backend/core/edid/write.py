@@ -1,84 +1,72 @@
-import os
 import time
-from typing import Optional, Dict, Any
-
 from smbus import SMBus
 
-from .checksum import validate_edid
+from .checksum import validate_checksum, validate_edid
 from .diff import diff_edid
 from .exceptions import EDIDWriteError
 
-# EDID / DDC constants
 EDID_I2C_ADDR = 0x50
-EDID_HEADER = b"\x00\xff\xff\xff\xff\xff\xff\x00"
 
 
-def find_ddc_i2c_buses() -> list[int]:
+def find_ddc_i2c_buses():
     """
-    Scan /dev/i2c-* for devices responding with a valid EDID header
-    at address 0x50.
+    Return a list of likely DDC I2C buses.
+    On Pi this is almost always i2c-2, but we probe safely.
     """
-    buses: list[int] = []
-
-    for dev in os.listdir("/dev"):
-        if not dev.startswith("i2c-"):
-            continue
-
+    buses = []
+    for bus in range(0, 6):
         try:
-            busnum = int(dev.split("-")[1])
-            smb = SMBus(busnum)
-
-            header = bytes(
-                smb.read_byte_data(EDID_I2C_ADDR, i)
-                for i in range(8)
-            )
-
+            smb = SMBus(bus)
+            smb.read_byte_data(EDID_I2C_ADDR, 0)
             smb.close()
-
-            if header == EDID_HEADER:
-                buses.append(busnum)
-
+            buses.append(bus)
         except Exception:
-            continue
-
+            pass
     return buses
 
 
 def write_edid_i2c(
     edid: bytes,
-    bus: Optional[int] = None,
+    bus: int | None = None,
     verify: bool = True,
+    strict: bool = False,
     sleep: float = 0.01,
-) -> Dict[str, Any]:
+):
     """
-    Write EDID to a DDC I2C EEPROM (EDID emulator).
+    Write EDID over I2C (DDC).
 
-    If bus is None, all detected DDC buses are tried until success.
+    strict=False (default):
+        - checksum validation only (emulator-safe)
+
+    strict=True:
+        - full EDID validation
     """
 
-    # --- Validation ---
-    if not validate_edid(edid):
-        raise EDIDWriteError("Invalid EDID supplied")
+    # ---- Validation ----
+    if strict:
+        if not validate_edid(edid):
+            raise EDIDWriteError("Strict EDID validation failed")
+    else:
+        if not validate_checksum(edid):
+            raise EDIDWriteError("EDID checksum invalid")
 
-    # --- Bus selection ---
     buses = [bus] if bus is not None else find_ddc_i2c_buses()
 
     if not buses:
-        raise EDIDWriteError("No DDC I2C buses found")
+        raise EDIDWriteError("No DDC I2C bus found")
 
-    last_error: Exception | None = None
+    last_error = None
 
-    # --- Attempt write on each bus ---
     for busnum in buses:
         try:
             smb = SMBus(busnum)
 
-            # Write EDID byte-by-byte
-            for offset, value in enumerate(edid):
-                smb.write_byte_data(EDID_I2C_ADDR, offset, value)
+            # ---- Write EDID ----
+            for i, byte in enumerate(edid):
+                smb.write_byte_data(EDID_I2C_ADDR, i, byte)
                 time.sleep(sleep)
 
-            # --- Verification ---
+            # ---- Verify ----
             if verify:
                 readback = bytes(
                     smb.read_byte_data(EDID_I2C_ADDR, i)
@@ -97,14 +85,9 @@ def write_edid_i2c(
                 "bus": busnum,
                 "bytes_written": len(edid),
                 "verified": verify,
-                "diff": None,
             }
 
         except Exception as e:
             last_error = e
-            try:
-                smb.close()
-            except Exception:
-                pass
 
-    raise EDIDWriteError(f"I2C EDID write failed: {last_error}")
+    raise EDIDWriteError(f"I2C write failed: {last_error}")
