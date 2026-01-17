@@ -1,5 +1,5 @@
 from .read import read_edid_drm
-from .write import write_edid
+from .write import write_edid_i2c
 from .save import save_edid
 from .checksum import validate_edid, validate_checksum
 from .decode import decode_basic, edid_to_hex
@@ -17,7 +17,7 @@ from .exceptions import (
 __all__ = [
     # Read / Write
     "read_edid_drm",
-    "write_edid",
+    "write_edid_i2c",
     "save_edid",
 
     # Validation
