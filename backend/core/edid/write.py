@@ -12,9 +12,28 @@ def write_edid_i2c(
     bus: int | None = None,
     verify: bool = True,
     sleep: float = 0.01,
+    force: bool = False,
 ):
-    if not validate_edid(edid):
-        raise EDIDWriteError("Invalid EDID supplied")
+    """
+    Write EDID to a DDC I2C device.
+
+    :param edid: EDID bytes to write
+    :param bus: Optional specific i2c bus number
+    :param verify: Read back and verify after write
+    :param sleep: Delay between byte writes
+    :param force: Allow writing invalid EDID (for emulator adapters)
+    """
+
+    # Validation (explicitly optional)
+    if not force:
+        if not validate_edid(edid):
+            raise EDIDWriteError("Invalid EDID supplied")
+    else:
+        # Still sanity-check length
+        if len(edid) not in (128, 256):
+            raise EDIDWriteError(
+                f"Invalid EDID length ({len(edid)} bytes)"
+            )
 
     buses = [bus] if bus is not None else find_ddc_i2c_buses()
 
@@ -49,6 +68,7 @@ def write_edid_i2c(
                 "bus": busnum,
                 "bytes_written": len(edid),
                 "verified": verify,
+                "forced": force,
             }
 
         except Exception as e:
