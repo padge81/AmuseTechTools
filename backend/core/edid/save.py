@@ -1,0 +1,59 @@
+import os
+import re
+from typing import Optional
+
+from .checksum import validate_edid
+from .exceptions import EDIDWriteError
+
+
+_SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9._-]+")
+
+
+def sanitize_filename(name: str) -> str:
+    """
+    Convert user input into a safe filename.
+    """
+    name = name.strip().lower()
+    name = name.replace(" ", "_")
+    name = _SAFE_NAME_RE.sub("", name)
+    return name or "edid"
+
+
+def ensure_bin_extension(name: str) -> str:
+    if not name.endswith(".bin"):
+        return f"{name}.bin"
+    return name
+
+
+def save_edid(
+    edid: bytes,
+    name: str,
+    directory: str,
+    overwrite: bool = False,
+) -> str:
+    """
+    Save EDID bytes safely to disk.
+
+    Returns:
+        Full path to saved file
+    """
+    if not validate_edid(edid):
+        raise EDIDWriteError("Invalid EDID, refusing to save")
+
+    if not os.path.isdir(directory):
+        os.makedirs(directory, exist_ok=True)
+
+    safe = sanitize_filename(name)
+    filename = ensure_bin_extension(safe)
+    path = os.path.join(directory, filename)
+
+    if os.path.exists(path) and not overwrite:
+        raise EDIDWriteError(f"EDID already exists: {filename}")
+
+    try:
+        with open(path, "wb") as f:
+            f.write(edid)
+    except OSError as e:
+        raise EDIDWriteError(f"Failed to write EDID: {e}") from e
+
+    return path

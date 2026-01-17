@@ -4,6 +4,7 @@ from .checksum import validate_edid, validate_checksum
 from .decode import decode_basic, edid_to_hex
 from .compare import find_matching_edid, edid_hash, edid_matches
 from .diff import diff_edid
+from .save import save_edid
 from .exceptions import (
     EDIDError,
     EDIDReadError,
@@ -21,6 +22,7 @@ __all__ = [
     "edid_hash",
     "edid_matches",
     "diff_edid",
+    "save_edid",
     "EDIDError",
     "EDIDReadError",
     "EDIDWriteError",
