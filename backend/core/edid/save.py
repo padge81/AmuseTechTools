@@ -2,8 +2,8 @@ import os
 import re
 from typing import Optional
 
-from .checksum import validate_checksum
-from .checksum import validate_edid
+from .checksum import validate_checksum, validate_edid
+from .compare import find_matching_edid
 from .exceptions import EDIDWriteError
 
 
@@ -33,6 +33,7 @@ def save_edid(
     overwrite: bool = False,
     strict: bool = False,
 ) -> str:
+    # ---- Validate EDID ----
     if strict:
         if not validate_edid(edid):
             raise EDIDWriteError("EDID failed strict validation")
@@ -40,17 +41,26 @@ def save_edid(
         if not validate_checksum(edid):
             raise EDIDWriteError("EDID checksum invalid")
 
+    # ---- Ensure directory exists ----
+    os.makedirs(directory, exist_ok=True)
 
-    if not os.path.isdir(directory):
-        os.makedirs(directory, exist_ok=True)
+    # ---- Content-based duplicate check ----
+    matches = find_matching_edid(edid, directory)
+    if matches:
+        existing = matches[0]["filename"]
+        raise EDIDWriteError(
+            f"EDID already exists (content match): {existing}"
+        )
 
+    # ---- Filename handling ----
     safe = sanitize_filename(name)
     filename = ensure_bin_extension(safe)
     path = os.path.join(directory, filename)
 
     if os.path.exists(path) and not overwrite:
-        raise EDIDWriteError(f"EDID already exists: {filename}")
+        raise EDIDWriteError(f"Filename already exists: {filename}")
 
+    # ---- Write file ----
     try:
         with open(path, "wb") as f:
             f.write(edid)
