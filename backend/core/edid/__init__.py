@@ -3,6 +3,7 @@ from .write import write_edid_i2c
 from .save import save_edid
 from .checksum import validate_edid, validate_checksum
 from .decode import decode_basic, edid_to_hex
+from .i2c import read_edid_i2c
 from .compare import (
     find_matching_edid,
     edid_hash,

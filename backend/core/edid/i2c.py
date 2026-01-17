@@ -1,32 +1,58 @@
-import os
-import time
-from smbus import SMBus
+def read_edid_i2c(
+    bus: int | None = None,
+    length: int = 128,
+    validate: bool = True,
+):
+    """
+    Read EDID directly from DDC over I2C (0x50)
 
-from .checksum import validate_edid
-from .diff import diff_edid
-from .exceptions import EDIDWriteError
+    Returns:
+        dict with keys:
+            bus
+            edid (bytes)
+            length
+            valid
+    """
+    buses = [bus] if bus is not None else find_ddc_i2c_buses()
 
-EDID_I2C_ADDR = 0x50
-EDID_HEADER = b"\x00\xff\xff\xff\xff\xff\xff\x00"
+    if not buses:
+        raise EDIDWriteError("No DDC I2C bus found")
 
+    last_error = None
 
-def find_ddc_i2c_buses():
-    buses = []
-
-    for dev in os.listdir("/dev"):
-        if not dev.startswith("i2c-"):
-            continue
-
-        busnum = int(dev.split("-")[1])
+    for busnum in buses:
         try:
-            bus = SMBus(busnum)
-            data = bytes(bus.read_byte_data(EDID_I2C_ADDR, i) for i in range(8))
-            bus.close()
+            smb = SMBus(busnum)
 
-            if data == EDID_HEADER:
-                buses.append(busnum)
+            data = bytes(
+                smb.read_byte_data(EDID_I2C_ADDR, i)
+                for i in range(length)
+            )
 
-        except Exception:
-            continue
+            smb.close()
 
-    return buses
+            # Header sanity check
+            if not data.startswith(EDID_HEADER):
+                raise EDIDWriteError(
+                    f"Invalid EDID header on i2c-{busnum}"
+                )
+
+            is_valid = validate_edid(data) if validate else True
+
+            if validate and not is_valid:
+                raise EDIDWriteError(
+                    f"Invalid EDID checksum on i2c-{busnum}"
+                )
+
+            return {
+                "bus": busnum,
+                "edid": data,
+                "length": len(data),
+                "valid": is_valid,
+            }
+
+        except Exception as e:
+            last_error = e
+
+    raise EDIDWriteError(f"I2C EDID read failed: {last_error}")
+
