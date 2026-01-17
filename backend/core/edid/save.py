@@ -30,15 +30,15 @@ def save_edid(
     name: str,
     directory: str,
     overwrite: bool = False,
+    strict: bool = False,
 ) -> str:
-    """
-    Save EDID bytes safely to disk.
+    if strict:
+        if not validate_edid(edid):
+            raise EDIDWriteError("EDID failed strict validation")
+    else:
+        if not validate_checksum(edid):
+            raise EDIDWriteError("EDID checksum invalid")
 
-    Returns:
-        Full path to saved file
-    """
-    if not validate_edid(edid):
-        raise EDIDWriteError("Invalid EDID, refusing to save")
 
     if not os.path.isdir(directory):
         os.makedirs(directory, exist_ok=True)
