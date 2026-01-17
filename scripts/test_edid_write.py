@@ -12,8 +12,11 @@ from backend.core.edid import (
     EDIDError,
 )
 
-DRM_PATH = "/sys/class/drm/card0-HDMI-A-1/edid"
-EDID_FILE = "./edid_files/UNIS3EDID.bin"   # CHANGE THIS
+# DRM connector (NOT the edid file)
+CONNECTOR_PATH = "/sys/class/drm/card0-HDMI-A-1"
+
+# Path to EDID binary to write
+EDID_FILE = "./edid_files/UNIS3EDID.bin"   # CHANGE IF NEEDED
 
 
 def banner(title):
@@ -36,15 +39,19 @@ def main():
         validate_edid(file_edid)
         print("✔ File EDID valid")
 
-        banner("WRITE EDID TO DRM")
-        written = write_edid(EDID_FILE)
-        print(f"✔ write_edid returned {len(written)} bytes")
+        banner("WRITE EDID TO DRM CONNECTOR")
+        written = write_edid(
+            edid=file_edid,
+            connector_path=CONNECTOR_PATH,
+            strict=True,
+        )
+        print(f"✔ write_edid wrote {len(written)} bytes")
 
-        banner("READ BACK EDID")
-        readback = read_edid_drm(DRM_PATH)
+        banner("READ BACK EDID FROM DRM")
+        readback = read_edid_drm(os.path.join(CONNECTOR_PATH, "edid"))
         print(f"Readback length: {len(readback)} bytes")
 
-        banner("VERIFY")
+        banner("VERIFY WRITTEN EDID")
         diff = diff_edid(file_edid, readback)
 
         if not diff:
@@ -53,7 +60,7 @@ def main():
             print("⚠ EDID differs:")
             print(diff)
 
-        banner("HEX (first 128 bytes)")
+        banner("HEX DUMP (first 128 bytes)")
         print(edid_to_hex(readback[:128]))
 
         banner("WRITE TEST COMPLETE")
