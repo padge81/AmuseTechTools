@@ -4,8 +4,7 @@ from .checksum import validate_edid, validate_checksum
 from .decode import decode_basic, edid_to_hex
 from .compare import    (
                             find_matching_edid, 
-                            edid_hash, 
-                            edid_matches,
+                            edid_hash,
                             list_saved_edids,
                         )
 from .diff import diff_edid
