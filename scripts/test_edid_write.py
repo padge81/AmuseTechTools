@@ -4,36 +4,34 @@ import sys
 import os
 
 from backend.core.edid import (
-    write_edid_i2c,
-    find_matching_edid,
     read_edid_drm,
+    write_edid_i2c,
     validate_edid,
     edid_to_hex,
     diff_edid,
-    write_edid,
     EDIDError,
 )
 
-# DRM connector (NOT the edid file)
-CONNECTOR_PATH = "/sys/class/drm/card0-HDMI-A-1"
-
-# Path to EDID binary to write
+# ---- CONFIG ----
+DRM_PATH = "/sys/class/drm/card0-HDMI-A-1/edid"
 EDID_FILE = "./edid_files/UNIS3EDID.bin"   # CHANGE IF NEEDED
 
 
-def banner(title):
+def banner(title: str):
     print("\n" + "=" * 60)
     print(title)
     print("=" * 60)
 
 
-def main():
+def main() -> int:
     try:
+        # ---- Load EDID file ----
+        banner("LOAD EDID FILE")
+
         if not os.path.exists(EDID_FILE):
             print(f"❌ File not found: {EDID_FILE}")
             return 1
 
-        banner("LOAD EDID FILE")
         with open(EDID_FILE, "rb") as f:
             file_edid = f.read()
 
@@ -41,28 +39,38 @@ def main():
         validate_edid(file_edid)
         print("✔ File EDID valid")
 
-        banner("WRITE EDID TO DRM CONNECTOR")
-        written = write_edid(
-            edid=file_edid,
-            connector_path=CONNECTOR_PATH,
-            strict=True,
-        )
-        print(f"✔ write_edid wrote {len(written)} bytes")
+        # ---- Write EDID ----
+        banner("WRITE EDID TO I2C (DDC)")
 
+        result = write_edid_i2c(
+            edid=file_edid,
+            bus=None,          # auto-detect
+            verify=True,
+            sleep=0.01,
+        )
+
+        print(f"✔ Written to i2c-{result['bus']}")
+        print(f"✔ Bytes written: {result['bytes_written']}")
+
+        # ---- Read back from DRM ----
         banner("READ BACK EDID FROM DRM")
-        readback = read_edid_drm(os.path.join(CONNECTOR_PATH, "edid"))
+
+        readback = read_edid_drm(DRM_PATH)
         print(f"Readback length: {len(readback)} bytes")
 
+        # ---- Verify ----
         banner("VERIFY WRITTEN EDID")
+
         diff = diff_edid(file_edid, readback)
 
         if not diff:
             print("✔ EDID verified (exact match)")
         else:
-            print("⚠ EDID differs:")
+            print("⚠ EDID mismatch detected:")
             print(diff)
 
-        banner("HEX DUMP (first 128 bytes)")
+        # ---- Display ----
+        banner("HEX DUMP (FIRST 128 BYTES)")
         print(edid_to_hex(readback[:128]))
 
         banner("WRITE TEST COMPLETE")
@@ -73,7 +81,7 @@ def main():
         return 1
 
     except PermissionError:
-        print("❌ Permission denied (needs sudo)")
+        print("❌ Permission denied (run with sudo)")
         return 1
 
     except Exception as e:
