@@ -1,19 +1,23 @@
-from backend.core.edid import read_edid_drm, find_matching_edid
+from backend.core.edid import (
+    read_edid_drm,
+    find_matching_edid,
+)
 
 EDID_DIR = "edid_files"
 
 
 def main():
-    print("Reading EDID...")
     edid = read_edid_drm()
 
-    print("Checking saved EDIDs...")
-    match = find_matching_edid(edid, EDID_DIR)
+    matches = find_matching_edid(edid, EDID_DIR)
 
-    if match:
-        print(f"✔ MATCH FOUND: {match}")
-    else:
-        print("✖ NO MATCH FOUND")
+    if not matches:
+        print("✖ No matching EDID found")
+        return
+
+    print("✔ Matching EDIDs:")
+    for m in matches:
+        print(f" - {m['filename']} (exact={m['exact']})")
 
 
 if __name__ == "__main__":

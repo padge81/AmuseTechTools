@@ -1,53 +1,64 @@
-import os
 import hashlib
-from typing import Optional, Tuple, List
+from pathlib import Path
+from typing import Optional, Dict, List
+
+from .checksum import validate_edid
+from .exceptions import EDIDError
 
 
 def edid_hash(edid: bytes) -> str:
+    """Return SHA256 hash of EDID bytes."""
     return hashlib.sha256(edid).hexdigest()
 
 
 def edid_matches(a: bytes, b: bytes) -> bool:
+    """Strict byte-for-byte comparison."""
     return a == b
 
 
 def find_matching_edid(
     edid: bytes,
-    edid_dir: str
-) -> Optional[str]:
+    directory: str,
+) -> Optional[Dict]:
     """
-    Compare EDID bytes against saved .bin files.
+    Compare EDID against saved .bin files.
 
     Returns:
-        filename (str) if match found
-        None if no match
+        {
+            "filename": "example.bin",
+            "path": "/full/path/example.bin",
+            "hash": "<sha256>"
+        }
+        or None if no match
     """
-    if not os.path.isdir(edid_dir):
+    if not validate_edid(edid):
+        raise EDIDError("Invalid EDID supplied for comparison")
+
+    base = Path(directory)
+    if not base.exists():
         return None
 
-    live_hash = edid_hash(edid)
+    edid_h = edid_hash(edid)
 
-    for fname in sorted(os.listdir(edid_dir)):
-        if not fname.lower().endswith(".bin"):
-            continue
-
-        path = os.path.join(edid_dir, fname)
-
+    for file in sorted(base.glob("*.bin")):
         try:
-            with open(path, "rb") as f:
-                saved = f.read()
+            data = file.read_bytes()
         except OSError:
             continue
 
-        if len(saved) < 128:
-            continue
-
-        # Fast hash compare
-        if edid_hash(saved) != live_hash:
-            continue
-
-        # Absolute safety: byte-for-byte compare
-        if edid_matches(edid, saved):
-            return fname
+        if data == edid:
+            return {
+                "filename": file.name,
+                "path": str(file),
+                "hash": edid_h,
+            }
 
     return None
+
+
+def list_saved_edids(directory: str) -> List[str]:
+    """Return list of saved EDID filenames."""
+    base = Path(directory)
+    if not base.exists():
+        return []
+    return sorted(f.name for f in base.glob("*.bin"))
