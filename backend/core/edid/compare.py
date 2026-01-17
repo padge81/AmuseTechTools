@@ -19,20 +19,14 @@ def edid_matches(a: bytes, b: bytes) -> bool:
 def find_matching_edid(
     edid: bytes,
     directory: str,
-) -> Optional[Dict]:
+):
     """
     Compare EDID against saved .bin files.
 
-    Returns:
-        {
-            "filename": "example.bin",
-            "path": "/full/path/example.bin",
-            "hash": "<sha256>"
-        }
-        or None if no match
+    Returns match dict or None.
     """
-    if not validate_edid(edid):
-        raise EDIDError("Invalid EDID supplied for comparison")
+    if not edid or len(edid) < 128:
+        raise EDIDError("EDID data too short to compare")
 
     base = Path(directory)
     if not base.exists():
@@ -54,6 +48,7 @@ def find_matching_edid(
             }
 
     return None
+
 
 
 def list_saved_edids(directory: str) -> List[str]:
