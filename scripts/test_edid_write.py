@@ -5,7 +5,6 @@ from backend.core.edid.checksum import validate_edid
 from backend.core.edid.diff import diff_edid
 from backend.core.edid.write import write_edid_i2c
 from backend.core.edid.i2c import read_edid_i2c
-from backend.core.edid.drm import read_edid_drm
 from backend.core.edid.exceptions import EDIDWriteError
 
 
