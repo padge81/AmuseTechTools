@@ -2,6 +2,7 @@ import os
 import re
 from typing import Optional
 
+from .checksum import validate_checksum
 from .checksum import validate_edid
 from .exceptions import EDIDWriteError
 
