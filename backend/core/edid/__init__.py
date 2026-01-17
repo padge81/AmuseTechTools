@@ -5,7 +5,6 @@ from .checksum import validate_edid, validate_checksum
 from .decode import decode_basic, edid_to_hex
 from .compare import (
     find_matching_edid,
-    edid_matches,
     edid_hash,
 )
 from .diff import diff_edid
@@ -31,7 +30,6 @@ __all__ = [
 
     # Compare / match
     "find_matching_edid",
-    "edid_matches",
     "edid_hash",
 
     # Diff

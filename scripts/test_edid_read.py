@@ -7,7 +7,6 @@ from backend.core.edid import (
     decode_basic,
     edid_to_hex,
     edid_hash,
-    edid_matches,
     diff_edid,
     EDIDError,
 )
@@ -43,9 +42,10 @@ def main():
         h = edid_hash(edid)
         print(h)
 
-        banner("COMPARE / DIFF SELF TEST")
-        assert edid_matches(edid, edid)
-        print("✔ Self-compare OK")
+        banner("SELF DIFF TEST")
+        diff = diff_edid(edid, edid)
+        print("✔ Diff empty" if not diff else diff)
+
 
         diff = diff_edid(edid, edid)
         print("✔ Diff empty" if not diff else diff)
