@@ -4,6 +4,8 @@ import sys
 import os
 
 from backend.core.edid import (
+    write_edid_i2c,
+    find_matching_edid,
     read_edid_drm,
     validate_edid,
     edid_to_hex,

@@ -4,34 +4,50 @@ from .exceptions import EDIDWriteError
 from .checksum import validate_edid
 
 
-def write_edid(
+def write_edid_i2c(
     edid: bytes,
-    connector_path: str,
-    strict: bool = True,
-) -> bytes:
-    """
-    Write EDID to a DRM connector override.
+    bus: int | None = None,
+    verify: bool = True,
+    sleep: float = 0.01,
+):
+    if not validate_edid(edid):
+        raise EDIDWriteError("Invalid EDID")
 
-    connector_path example:
-        /sys/class/drm/card0-HDMI-A-1
-    """
+    buses = [bus] if bus is not None else find_ddc_i2c_buses()
 
-    if strict:
-        validate_edid(edid)
+    if not buses:
+        raise EDIDWriteError("No DDC I2C bus found")
 
-    override_path = os.path.join(connector_path, "edid_override")
+    last_error = None
 
-    if not os.path.exists(override_path):
-        raise EDIDWriteError(
-            f"EDID override not supported on {connector_path}"
-        )
+    for busnum in buses:
+        try:
+            smb = SMBus(busnum)
 
-    try:
-        with open(override_path, "wb") as f:
-            f.write(edid)
-    except PermissionError:
-        raise EDIDWriteError("Permission denied (need sudo)")
-    except OSError as e:
-        raise EDIDWriteError(f"Failed to write EDID: {e}") from e
+            # Write EDID
+            for i, byte in enumerate(edid):
+                smb.write_byte_data(EDID_I2C_ADDR, i, byte)
+                time.sleep(sleep)
 
-    return edid
+            if verify:
+                readback = bytes(
+                    smb.read_byte_data(EDID_I2C_ADDR, i)
+                    for i in range(len(edid))
+                )
+
+                diff = diff_edid(edid, readback)
+                if diff:
+                    raise EDIDWriteError(f"Verification failed on i2c-{busnum}")
+
+            smb.close()
+            return {
+                "bus": busnum,
+                "bytes_written": len(edid),
+                "verified": verify,
+                "diff": None,
+            }
+
+        except Exception as e:
+            last_error = e
+
+    raise EDIDWriteError(f"I2C write failed: {last_error}")
