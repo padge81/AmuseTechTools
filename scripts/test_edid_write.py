@@ -3,6 +3,7 @@
 import sys
 import os
 
+from backend.core.edid.i2c import read_edid_i2c
 from backend.core.edid import (
     read_edid_drm,
     write_edid_i2c,
@@ -52,8 +53,8 @@ def main() -> int:
         print(f"✔ Written to i2c-{result['bus']}")
         print(f"✔ Bytes written: {result['bytes_written']}")
 
-        # ---- Read back from DRM ----
-        banner("READ BACK EDID FROM DRM")
+        banner("READ BACK EDID FROM I2C")
+        readback = read_edid_i2c(bus=2)
 
         readback = read_edid_drm(DRM_PATH)
         print(f"Readback length: {len(readback)} bytes")
