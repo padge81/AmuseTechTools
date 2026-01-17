@@ -4,7 +4,7 @@ from typing import Optional, Dict, List
 
 from .checksum import validate_edid
 from .exceptions import EDIDError
-
+from .compare import edid_hash
 
 def edid_hash(edid: bytes) -> str:
     """Return SHA256 hash of EDID bytes."""
@@ -16,22 +16,18 @@ def edid_matches(a: bytes, b: bytes) -> bool:
     return a == b
 
 
-def find_matching_edid(
-    edid: bytes,
-    directory: str,
-):
+def find_matching_edid(edid: bytes, directory: str):
     """
-    Compare EDID against saved .bin files.
-
-    Returns match dict or None.
+    Return list of matching EDIDs.
     """
     if not edid or len(edid) < 128:
         raise EDIDError("EDID data too short to compare")
 
     base = Path(directory)
     if not base.exists():
-        return None
+        return []
 
+    matches = []
     edid_h = edid_hash(edid)
 
     for file in sorted(base.glob("*.bin")):
@@ -41,13 +37,14 @@ def find_matching_edid(
             continue
 
         if data == edid:
-            return {
+            matches.append({
                 "filename": file.name,
                 "path": str(file),
+                "exact": True,
                 "hash": edid_h,
-            }
+            })
 
-    return None
+    return matches
 
 
 
