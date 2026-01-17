@@ -13,7 +13,7 @@ from backend.core.edid import (
 )
 
 DRM_PATH = "/sys/class/drm/card0-HDMI-A-1/edid"
-EDID_FILE = "./edids/UNIS3EDID.bin"   # CHANGE THIS
+EDID_FILE = "./edid_files/UNIS3EDID.bin"   # CHANGE THIS
 
 
 def banner(title):
