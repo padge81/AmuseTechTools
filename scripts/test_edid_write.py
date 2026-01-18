@@ -18,19 +18,25 @@ def main():
         print("LOAD EDID FILE")
         print("=" * 60)
 
-        edid = EDID_FILE.read_bytes()
-        print(f"File EDID length: {len(edid)} bytes")
+edid = EDID_FILE.read_bytes()
+print(f"File EDID length: {len(edid)} bytes")
 
-        if not validate_edid(edid):
-            raise EDIDWriteError("File EDID invalid")
-
-        print("✔ File EDID valid")
+if validate_edid(edid):
+    print("✔ File EDID valid")
+    force = False
+else:
+        print("⚠ File EDID failed strict validation — forcing write")
+        force = True
 
         print("\n" + "=" * 60)
         print("WRITE EDID TO I2C (DDC)")
         print("=" * 60)
 
-        result = write_edid_i2c(edid, verify=False)
+        result = write_edid_i2c(
+                                edid,
+                                verify=False,
+                                force=force,
+                                )
         bus = result["bus"]
 
         print(f"✔ Written to i2c-{bus}")
