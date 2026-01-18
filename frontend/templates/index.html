@@ -1,24 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1>AmuseTech Tools</h1>
-
-<button onclick="location.href='/edid/'">EDID Tools</button>
-<button disabled>Pattern Generator</button>
-<button disabled>Camera</button>
-<button disabled>Input / Output</button>
-
-<hr>
-
-<button onclick="fetch('/reboot',{method:'POST'})">Reboot</button>
-<button onclick="fetch('/shutdown',{method:'POST'})">Shutdown</button>
-
-<div id="version"></div>
-
-<script>
-fetch("/version").then(r=>r.json()).then(d=>{
-    document.getElementById("version").innerText = d.version;
-});
-</script>
+<div class="menu">
+    <a href="/edid"><button>EDID Tools</button></a>
+    <a href="/pattern"><button>Pattern Generator</button></a>
+    <a href="/camera"><button>Camera</button></a>
+    <a href="/io"><button>Input / Output</button></a>
+</div>
 
 {% endblock %}
