@@ -1,35 +1,23 @@
-from flask import Flask, render_template, jsonify
-from backend.system import system_action, get_version
+import subprocess
+from pathlib import Path
 
-app = Flask(__name__)
+VERSION_FILE = Path("VERSION")
 
-@app.route("/")
-def index():
-    return render_template("index.html", version=get_version())
+def get_version():
+    if VERSION_FILE.exists():
+        return VERSION_FILE.read_text().strip()
+    return "unknown"
 
-@app.route("/edid")
-def edid_tools():
-    return render_template("edid_tools.html")
+def system_action(action):
+    if action == "reboot":
+        subprocess.Popen(["sudo", "reboot"])
+    elif action == "shutdown":
+        subprocess.Popen(["sudo", "shutdown", "-h", "now"])
+    elif action == "exit_browser":
+        subprocess.Popen(["pkill", "chromium"])
+    elif action == "update":
+        subprocess.Popen(["git", "pull"])
+    else:
+        return {"status": "error", "message": "Unknown action"}
 
-@app.route("/pattern")
-def pattern():
-    return render_template("pattern_generator.html")
-
-@app.route("/camera")
-def camera():
-    return render_template("camera.html")
-
-@app.route("/io")
-def input_output():
-    return render_template("input_output.html")
-
-@app.route("/io/<module>")
-def io_module(module):
-    return render_template(f"{module}.html")
-
-@app.route("/system/<action>", methods=["POST"])
-def system(action):
-    return jsonify(system_action(action))
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    return {"status": "ok"}
