@@ -1,22 +1,15 @@
 function systemAction(action) {
-    if (!confirm(`Are you sure you want to ${action.replace("_", " ")}?`)) {
-        return;
-    }
-
-    fetch("/system/action", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ action: action })
+    fetch(`/system/${action}`, {
+        method: "POST"
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.error) {
-            alert("Error: " + data.error);
-        } else {
-            alert("Action executed: " + action);
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Request failed");
         }
+        return response.json();
+    })
+    .then(data => {
+        alert(data.message || "Command sent");
     })
     .catch(err => {
         alert("Request failed");

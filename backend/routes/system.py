@@ -1,19 +1,24 @@
-from flask import Blueprint, jsonify, request
-from backend.core.system.system import system_action
+from flask import Blueprint, jsonify
+import subprocess
 
 bp = Blueprint("system", __name__, url_prefix="/system")
 
+@bp.route("/reboot", methods=["POST"])
+def reboot():
+    subprocess.Popen(["sudo", "/sbin/reboot"])
+    return jsonify({"message": "Rebooting"}), 200
 
-@bp.route("/action", methods=["POST"])
-def do_system_action():
-    data = request.get_json(silent=True) or {}
-    action = data.get("action")
+@bp.route("/shutdown", methods=["POST"])
+def shutdown():
+    subprocess.Popen(["sudo", "/sbin/shutdown", "-h", "now"])
+    return jsonify({"message": "Shutting down"}), 200
 
-    if not action:
-        return jsonify({"error": "No action specified"}), 400
+@bp.route("/exit_browser", methods=["POST"])
+def exit_browser():
+    subprocess.Popen(["sudo", "/usr/bin/pkill", "chromium"])
+    return jsonify({"message": "Browser closed"}), 200
 
-    try:
-        system_action(action)
-        return jsonify({"status": "ok", "action": action})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+@bp.route("/update", methods=["POST"])
+def update():
+    subprocess.Popen(["sudo", "/usr/bin/git", "-C", "/home/att/AmuseTechTools", "pull"])
+    return jsonify({"message": "Updating from GitHub"}), 200
