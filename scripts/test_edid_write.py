@@ -46,7 +46,12 @@ def main():
 
         banner("READ BACK EDID FROM I2C")
 
-        readback = read_edid_i2c(bus=bus, length=len(edid))
+        readback = read_edid_i2c(
+            bus=bus,
+            length=len(edid),
+            strict=False,   # ← THIS IS THE KEY
+        )
+
         rb_edid = readback["edid"]
         print(f"Readback length: {len(rb_edid)} bytes")
 
