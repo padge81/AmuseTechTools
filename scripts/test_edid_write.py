@@ -9,7 +9,7 @@ from backend.core.edid.write import write_edid_i2c
 from backend.core.edid.i2c import read_edid_i2c
 from backend.core.edid.exceptions import EDIDWriteError
 
-EDID_FILE = Path("edid_files/UNIS3EDID.bin")
+EDID_FILE = Path("edid_files/ff.bin")
 
 
 def banner(title):
