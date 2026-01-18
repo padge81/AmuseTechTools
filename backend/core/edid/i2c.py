@@ -1,27 +1,78 @@
+import os
+import time
+from smbus import SMBus
+
+from .checksum import validate_edid
+from .exceptions import EDIDWriteError
+
+# Standard DDC / EDID EEPROM address
+EDID_I2C_ADDR = 0x50
+
+# EDID header signature
+EDID_HEADER = b"\x00\xff\xff\xff\xff\xff\xff\x00"
+
+
+def find_ddc_i2c_buses():
+    """
+    Scan /dev/i2c-* buses and return those that respond
+    with a valid EDID header at address 0x50.
+    """
+    buses = []
+
+    for dev in os.listdir("/dev"):
+        if not dev.startswith("i2c-"):
+            continue
+
+        try:
+            busnum = int(dev.split("-")[1])
+            bus = SMBus(busnum)
+
+            data = bytes(
+                bus.read_byte_data(EDID_I2C_ADDR, i)
+                for i in range(8)
+            )
+
+            bus.close()
+
+            if data == EDID_HEADER:
+                buses.append(busnum)
+
+        except Exception:
+            continue
+
+    return buses
+
+
 def read_edid_i2c(
     bus: int,
     length: int = 128,
-    strict: bool = False,
+    strict: bool = True,
 ):
+    """
+    Read raw EDID bytes from a DDC I2C bus.
+
+    strict=True  -> validate EDID header + checksum
+    strict=False -> raw read only (used after writes)
+    """
     try:
         smb = SMBus(bus)
 
-        data = bytes(
+        edid = bytes(
             smb.read_byte_data(EDID_I2C_ADDR, i)
             for i in range(length)
         )
 
         smb.close()
 
-        if strict and not validate_edid(data):
+        if strict and not validate_edid(edid):
             raise EDIDWriteError(
                 f"Invalid EDID read from i2c-{bus}"
             )
 
         return {
             "bus": bus,
-            "edid": data,
-            "valid": validate_edid(data),
+            "edid": edid,
+            "bytes_read": len(edid),
         }
 
     except Exception as e:
