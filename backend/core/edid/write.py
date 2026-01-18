@@ -4,11 +4,7 @@ from smbus import SMBus
 from .checksum import validate_edid
 from .diff import diff_edid
 from .exceptions import EDIDWriteError
-from .i2c import (
-    EDID_I2C_ADDR,
-    find_ddc_i2c_buses,
-    read_edid_i2c,
-)
+from .i2c import EDID_I2C_ADDR, find_ddc_i2c_buses, read_edid_i2c
 
 
 def write_edid_i2c(
@@ -16,20 +12,22 @@ def write_edid_i2c(
     bus: int | None = None,
     verify: bool = True,
     sleep: float = 0.01,
+    force: bool = False,
 ):
     """
-    Write EDID to a DDC I2C EEPROM (0x50).
+    Write EDID to a DDC I2C bus.
 
-    - If bus is None, auto-detect DDC buses
-    - Writes byte-by-byte
-    - Optional verification using raw I2C readback
+    force=True bypasses strict EDID validation (for emulators/adapters).
     """
 
-    # Basic sanity check (header + checksum)
-    if not validate_edid(edid):
-        raise EDIDWriteError("Invalid EDID supplied")
+    if not force:
+        if not validate_edid(edid):
+            raise EDIDWriteError("Invalid EDID supplied")
+    else:
+        # Still require minimum size sanity
+        if len(edid) < 128:
+            raise EDIDWriteError("EDID too short to write")
 
-    # Determine buses to try
     buses = [bus] if bus is not None else find_ddc_i2c_buses()
 
     if not buses:
@@ -41,27 +39,23 @@ def write_edid_i2c(
         try:
             smb = SMBus(busnum)
 
-            # Write EDID byte-by-byte
+            # Write EDID byte-by-byte (safe for EEPROMs)
             for i, byte in enumerate(edid):
                 smb.write_byte_data(EDID_I2C_ADDR, i, byte)
                 time.sleep(sleep)
 
             smb.close()
 
-            # EEPROM settle time (IMPORTANT)
-            time.sleep(0.25)
-
-            # Optional verification
+            # Optional I2C verification
             if verify:
                 result = read_edid_i2c(
                     bus=busnum,
                     length=len(edid),
-                    strict=False,   # RAW read, do NOT fail validation here
+                    strict=False,  # IMPORTANT: EEPROM may not checksum yet
                 )
-
                 readback = result["edid"]
-                diff = diff_edid(edid, readback)
 
+                diff = diff_edid(edid, readback)
                 if diff:
                     raise EDIDWriteError(
                         f"I2C verification failed on i2c-{busnum}"
@@ -71,6 +65,7 @@ def write_edid_i2c(
                 "bus": busnum,
                 "bytes_written": len(edid),
                 "verified": verify,
+                "forced": force,
             }
 
         except Exception as e:
