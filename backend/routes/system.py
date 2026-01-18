@@ -1,29 +1,19 @@
-from flask import Blueprint, jsonify
-import subprocess
+from flask import Blueprint, jsonify, request
+from backend.core.system.system import system_action
 
-bp = Blueprint("system", __name__)
+bp = Blueprint("system", __name__, url_prefix="/system")
 
-@bp.route("/")
-def index():
-    from flask import render_template
-    return render_template("index.html")
 
-@bp.route("/reboot", methods=["POST"])
-def reboot():
-    subprocess.Popen(["sudo", "reboot"])
-    return jsonify(ok=True)
+@bp.route("/action", methods=["POST"])
+def do_system_action():
+    data = request.get_json(silent=True) or {}
+    action = data.get("action")
 
-@bp.route("/shutdown", methods=["POST"])
-def shutdown():
-    subprocess.Popen(["sudo", "shutdown", "-h", "now"])
-    return jsonify(ok=True)
+    if not action:
+        return jsonify({"error": "No action specified"}), 400
 
-@bp.route("/version")
-def version():
     try:
-        v = subprocess.check_output(
-            ["git", "describe", "--tags", "--dirty", "--always"]
-        ).decode().strip()
-    except Exception:
-        v = "unknown"
-    return jsonify(version=v)
+        system_action(action)
+        return jsonify({"status": "ok", "action": action})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

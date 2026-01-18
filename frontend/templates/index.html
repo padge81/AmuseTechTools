@@ -15,16 +15,18 @@
     </div>
 
     <div class="bottom-bar">
-        <button onclick="fetch('/system/exit')">Exit Browser</button>
-        <button onclick="fetch('/system/reboot')">Reboot</button>
-        <button onclick="fetch('/system/shutdown')">Shutdown</button>
+        <button onclick="systemAction('exit_browser')">Exit Browser</button>
+        <button onclick="systemAction('reboot')">Reboot Pi</button>
+        <button onclick="systemAction('shutdown')">Shutdown Pi</button>
     </div>
 
     <div class="footer">
-        <div>v{{ version }}</div>
-        <button onclick="fetch('/system/update')">Update from GitHub</button>
+        <span>Version: {{ version }}</span>
+        <button onclick="systemAction('update')">Update from GitHub</button>
     </div>
 
 </div>
+
+<script src="{{ url_for('static', filename='js/system.js') }}"></script>
 
 {% endblock %}
