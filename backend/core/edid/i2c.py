@@ -1,22 +1,14 @@
 import os
-import time
 from smbus import SMBus
 
 from .checksum import validate_edid
 from .exceptions import EDIDWriteError
 
-# Standard DDC / EDID EEPROM address
 EDID_I2C_ADDR = 0x50
-
-# EDID header signature
 EDID_HEADER = b"\x00\xff\xff\xff\xff\xff\xff\x00"
 
 
 def find_ddc_i2c_buses():
-    """
-    Scan /dev/i2c-* buses and return those that respond
-    with a valid EDID header at address 0x50.
-    """
     buses = []
 
     for dev in os.listdir("/dev"):
@@ -27,14 +19,14 @@ def find_ddc_i2c_buses():
             busnum = int(dev.split("-")[1])
             bus = SMBus(busnum)
 
-            data = bytes(
+            header = bytes(
                 bus.read_byte_data(EDID_I2C_ADDR, i)
                 for i in range(8)
             )
 
             bus.close()
 
-            if data == EDID_HEADER:
+            if header == EDID_HEADER:
                 buses.append(busnum)
 
         except Exception:
@@ -63,13 +55,14 @@ def read_edid_i2c(
         )
         smb.close()
     except Exception as e:
-        raise EDIDWriteError(f"I2C read failed on i2c-{bus}: {e}")
+        raise EDIDWriteError(
+            f"I2C EDID read failed on i2c-{bus}: {e}"
+        )
 
-    if strict:
-        if not validate_edid(edid):
-            raise EDIDWriteError(
-                f"Invalid EDID read from i2c-{bus}"
-            )
+    if strict and not validate_edid(edid):
+        raise EDIDWriteError(
+            f"Invalid EDID read from i2c-{bus}"
+        )
 
     return {
         "bus": bus,
@@ -77,9 +70,3 @@ def read_edid_i2c(
         "length": len(edid),
         "strict": strict,
     }
-
-
-    except Exception as e:
-        raise EDIDWriteError(
-            f"I2C EDID read failed on i2c-{bus}: {e}"
-        ) from e
