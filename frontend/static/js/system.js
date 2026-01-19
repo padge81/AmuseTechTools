@@ -2,17 +2,9 @@ function systemAction(action) {
     fetch(`/system/${action}`, {
         method: "POST"
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error("Request failed");
-        }
-        return response.json();
+    .then(r => {
+        if (!r.ok) throw new Error("Request failed");
+        return r.json();
     })
-    .then(data => {
-        alert(data.message || "Command sent");
-    })
-    .catch(err => {
-        alert("Request failed");
-        console.error(err);
-    });
+    .catch(err => alert(err));
 }
