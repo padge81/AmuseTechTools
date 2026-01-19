@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page">
+
+    <div class="top-bar">
+        <button onclick="location.href='/'">Home</button>
+    </div>
+
+    <h1>EDID Tools</h1>
+
+    <div class="controls">
+        <label>Port:</label>
+        <select id="port">
+            <option value="card0-HDMI-A-1">HDMI-A-1</option>
+        </select>
+
+        <button onclick="readEdid()">Read EDID</button>
+        <button onclick="resetView()">Reset</button>
+    </div>
+
+    <div class="status" id="status">Idle</div>
+
+    <div class="match" id="match"></div>
+
+    <pre id="output" class="output"></pre>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/edid.js') }}"></script>
+
+{% endblock %}

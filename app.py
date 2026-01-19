@@ -2,6 +2,7 @@ from flask import Flask, render_template
 
 from backend.routes import system, edid
 from backend.core.system.version import get_version
+from backend.routes.edid import bp as edid_bp
 
 def create_app():
     app = Flask(
