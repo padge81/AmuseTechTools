@@ -1,51 +1,27 @@
-from flask import Blueprint, jsonify, request, render_template
+from flask import Blueprint, jsonify, request
+from backend.core.edid.read import read_edid_drm
+import os
 
 bp = Blueprint("edid", __name__, url_prefix="/edid")
 
-@bp.route("/")
-def page():
-    return render_template("edid_tools.html")
 
 @bp.route("/read")
 def read_edid():
-    return jsonify(status="stub")
+    connector = request.args.get("connector")
 
-@bp.route("/write", methods=["POST"])
-def write_edid():
-    return jsonify(status="stub")
-from flask import Blueprint, jsonify, request, render_template
-from backend.core.edid.read import read_edid_drm
-from backend.core.edid.decode import decode_basic
-from backend.core.edid.compare import find_matching_edid
-from backend.core.edid.exceptions import EDIDError
+    if not connector:
+        return jsonify({"error": "No connector specified"}), 400
 
-bp = Blueprint("edid", __name__, url_prefix="/edid")
+    path = f"/sys/class/drm/{connector}/edid"
 
+    if not os.path.exists(path):
+        return jsonify({"error": f"EDID not found for {connector}"}), 400
 
-@bp.route("")
-def edid_page():
-    return render_template("edid_tools.html")
-
-
-@bp.route("/read", methods=["GET"])
-def read_edid_route():
     try:
-        from backend.core.edid.read import read_edid_drm
-        from backend.core.edid.decode import decode_basic
-        from backend.core.edid.compare import find_matching_edid
-
-        edid = read_edid_drm("card0-HDMI-A-1")
-
-        matches = find_matching_edid(edid, "edid_files")
-        decoded = decode_basic(edid)
-
-        return {
-            "ok": True,
-            "edid_hex": edid.hex(),
-            "decoded": decoded,
-            "matches": matches,
-        }
-
+        edid = read_edid_drm(path)
+        return jsonify({
+            "connector": connector,
+            "edid_hex": edid.hex()
+        })
     except Exception as e:
-        return {"ok": False, "error": str(e)}, 400
-
+        return jsonify({"error": str(e)}), 400
