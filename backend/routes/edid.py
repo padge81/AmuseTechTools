@@ -28,20 +28,24 @@ def edid_page():
 
 
 @bp.route("/read", methods=["GET"])
-def read_edid():
+def read_edid_route():
     try:
-        port = request.args.get("port", default="card0-HDMI-A-1")
-        edid = read_edid_drm(port)
+        from backend.core.edid.read import read_edid_drm
+        from backend.core.edid.decode import decode_basic
+        from backend.core.edid.compare import find_matching_edid
+
+        edid = read_edid_drm("card0-HDMI-A-1")
 
         matches = find_matching_edid(edid, "edid_files")
         decoded = decode_basic(edid)
 
-        return jsonify({
+        return {
             "ok": True,
             "edid_hex": edid.hex(),
             "decoded": decoded,
             "matches": matches,
-        })
+        }
 
-    except EDIDError as e:
-        return jsonify({"ok": False, "error": str(e)}), 400
+    except Exception as e:
+        return {"ok": False, "error": str(e)}, 400
+
