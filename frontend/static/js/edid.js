@@ -59,7 +59,7 @@ function readEdid() {
 //           setStatus("Error");
  //           alert(err.message);
  //       });
-}
+
 
 function resetView() {
     document.getElementById("output").innerText = "";
