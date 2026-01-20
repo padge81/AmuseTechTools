@@ -5,7 +5,7 @@ function setStatus(text) {
 function readEdid() {
     setStatus("Reading EDID...");
 
-    fetch("/edid/read")
+    fetch("/edid/read?connector=card0-HDMI-A-1")
         .then(r => r.json())
         .then(data => {
             if (!data.ok) {
