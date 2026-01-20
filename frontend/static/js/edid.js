@@ -6,8 +6,13 @@ function readEdid() {
     setStatus("Reading EDID...");
 
     fetch("/edid/read?connector=card0-HDMI-A-1")
-        .then(r => r.json())
-        .then(data => {
+    .then(res => res.json())
+    .then(data => {
+        console.log("EDID READ RESPONSE:", data);
+    })
+    .catch(err => {
+        console.error("EDID READ ERROR:", err);
+    });
             if (!data.ok) {
                 throw new Error(data.error);
             }
