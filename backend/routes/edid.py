@@ -34,7 +34,7 @@ def read_edid_route():
         from backend.core.edid.decode import decode_basic
         from backend.core.edid.compare import find_matching_edid
 
-        edid = read_edid_drm("card0-HDMI-A-1")
+        edid = read_edid_drm("/sys/class/drm/card0-HDMI-A-1/edid")
 
         matches = find_matching_edid(edid, "edid_files")
         decoded = decode_basic(edid)
