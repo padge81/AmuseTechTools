@@ -3,16 +3,37 @@ function setStatus(text) {
 }
 
 function readEdid() {
-    setStatus("Reading EDID...");
+    const port = document.getElementById("port").value;
+    const output = document.getElementById("output");
+    const status = document.getElementById("status");
 
-fetch("/edid/read?connector=card0-HDMI-A-1")
-    .then(res => res.json())
-    .then(data => {
-        console.log("EDID READ RESPONSE:", data);
-    })
-    .catch(err => {
-        console.error("EDID READ ERROR:", err);
-    });
+    status.innerText = "Reading EDID...";
+    output.innerText = "";
+
+    fetch(`/edid/read?connector=${port}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                status.innerText = "Error";
+                output.innerText = data.error;
+                return;
+            }
+
+            status.innerText = "EDID Read OK";
+
+            // Pretty-print hex (32 chars per line)
+            const formatted = data.edid_hex
+                .match(/.{1,32}/g)
+                .join("\n");
+
+            output.innerText = formatted;
+        })
+        .catch(err => {
+            status.innerText = "Error";
+            output.innerText = err.toString();
+        });
+}
+
 
  //   fetch("/edid/read?connector=card0-HDMI-A-1")
  //       .then(r => r.json())

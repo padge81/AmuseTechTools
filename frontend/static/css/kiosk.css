@@ -19,6 +19,15 @@ body {
     height: 100%;
     padding: 20px;
 }
+.output {
+    background: #111;
+    color: #0f0;
+    padding: 12px;
+    height: 300px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 14px;
+}
 
 /* Logo */
 .logo {
