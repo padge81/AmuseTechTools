@@ -2,6 +2,21 @@ function setStatus(text) {
     document.getElementById("status").innerText = text;
 }
 
+function formatHexEdid(hexString) {
+    let lines = [];
+    let offset = 0;
+
+    for (let i = 0; i < hexString.length; i += 32) {
+        const chunk = hexString.slice(i, i + 32);
+        const bytes = chunk.match(/.{1,2}/g).join(" ");
+        lines.push(offset.toString(16).padStart(4, "0") + ": " + bytes);
+        offset += 16;
+    }
+
+    return lines.join("\n");
+}
+
+
 function readEdid() {
     const port = document.getElementById("port").value;
     const output = document.getElementById("output");
@@ -20,45 +35,13 @@ function readEdid() {
             }
 
             status.innerText = "EDID Read OK";
-
-            // Pretty-print hex (32 chars per line)
-            const formatted = data.edid_hex
-                .match(/.{1,32}/g)
-                .join("\n");
-
-            output.innerText = formatted;
+            output.innerText = formatHexEdid(data.edid_hex);
         })
         .catch(err => {
             status.innerText = "Error";
             output.innerText = err.toString();
         });
 }
-
-
- //   fetch("/edid/read?connector=card0-HDMI-A-1")
- //       .then(r => r.json())
- //       .then(data => {
- //           if (!data.ok) {
- //               throw new Error(data.error);
- //           }
-//
- //           document.getElementById("output").innerText =
-//                data.edid_hex.match(/.{1,32}/g).join("\n");
-//
-//            if (data.matches.length > 0) {
-//                document.getElementById("match").innerText =
- //                   "✔ Match: " + data.matches[0].filename;
- //           } else {
- //               document.getElementById("match").innerText =
- //                   "❌ No match found";
- //           }
-//
-//            setStatus("Read OK");
- //       })
-//        .catch(err => {
-//           setStatus("Error");
- //           alert(err.message);
- //       });
 
 
 function resetView() {
