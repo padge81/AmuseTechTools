@@ -1,5 +1,20 @@
+// ==============================
+// Global EDID state
+// ==============================
+let lastEdidHex = null;
+let currentView = "binary"; // "binary" | "decoded"
+
+
+// ==============================
+// Helpers
+// ==============================
+function getEl(id) {
+    return document.getElementById(id);
+}
+
 function setStatus(text) {
-    document.getElementById("status").innerText = text;
+    const status = getEl("status");
+    if (status) status.innerText = text;
 }
 
 function formatHexEdid(hexString) {
@@ -17,45 +32,68 @@ function formatHexEdid(hexString) {
 }
 
 
+// ==============================
+// EDID actions
+// ==============================
 function readEdid() {
-    let lastEdidHex = null;
-	let currentView = "binary";
+    const portEl = getEl("port");
+    const output = getEl("output");
+    const status = getEl("status");
 
-	
-	const port = document.getElementById("port").value;
-    const output = document.getElementById("output");
-    const status = document.getElementById("status");
+    if (!portEl || !output || !status) {
+        console.warn("EDID elements not present on this page");
+        return;
+    }
 
-    status.innerText = "Reading EDID...";
+    setStatus("Reading EDID...");
     output.innerText = "";
+    lastEdidHex = null;
 
-    fetch(`/edid/read?connector=${port}`)
+    fetch(`/edid/read?connector=${portEl.value}`)
         .then(res => res.json())
         .then(data => {
             if (data.error) {
-                status.innerText = "Error";
+                setStatus("Error");
                 output.innerText = data.error;
                 return;
             }
 
-            status.innerText = "EDID Read OK";
-			lastEdidHex = data.edid_hex;
-            output.innerText = formatHexEdid(data.edid_hex);
+            lastEdidHex = data.edid_hex;
+            setStatus("EDID Read OK");
+            renderView();
         })
         .catch(err => {
-            status.innerText = "Error";
+            setStatus("Error");
             output.innerText = err.toString();
         });
 }
 
+
+function resetView() {
+    const output = getEl("output");
+    if (!output) return;
+
+    lastEdidHex = null;
+    currentView = "binary";
+    output.innerText = "";
+    setStatus("Idle");
+}
+
+
+// ==============================
+// View handling
+// ==============================
 function switchView() {
     const selected = document.querySelector("input[name='viewMode']:checked");
+    if (!selected) return;
+
     currentView = selected.value;
     renderView();
 }
 
 function renderView() {
-    const output = document.getElementById("output");
+    const output = getEl("output");
+    if (!output) return;
 
     if (!lastEdidHex) {
         output.innerText = "";
@@ -69,6 +107,10 @@ function renderView() {
     }
 }
 
+
+// ==============================
+// Placeholder decode
+// ==============================
 function decodeEdidPlaceholder() {
     return (
         "Decoded EDID (coming next):\n\n" +
@@ -79,10 +121,3 @@ function decodeEdidPlaceholder() {
         "• Refresh Rate: —\n"
     );
 }
-
-function resetView() {
-    lastEdidHex = null;
-    document.getElementById("output").innerText = "";
-    document.getElementById("status").innerText = "Idle";
-}
-
