@@ -9,8 +9,9 @@ let currentView = "binary"; // "binary" | "decoded"
 // Helpers
 // ==============================
 
-function loadConnectors() {
+function loadConnectors(isRefresh = false) {
     const portSelect = document.getElementById("port");
+    const previous = portSelect.value;
 
     fetch("/edid/connectors")
         .then(res => res.json())
@@ -31,11 +32,18 @@ function loadConnectors() {
                 opt.text = connector;
                 portSelect.appendChild(opt);
             });
+
+            // Restore previous selection if still valid
+            if (isRefresh && connectors.includes(previous)) {
+                portSelect.value = previous;
+            }
         })
         .catch(err => {
             console.error("Connector load failed:", err);
         });
 }
+
+
 
 function getEl(id) {
     return document.getElementById(id);

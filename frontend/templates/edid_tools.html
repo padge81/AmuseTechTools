@@ -11,9 +11,10 @@
 
     <div class="controls">
         <label>Port:</label>
-        <select id="port">
-            <option value="card0-HDMI-A-1">HDMI-A-1</option>
-        </select>
+        <select id="port"></select>
+
+ <button onclick="loadConnectors(true)">↻ Refresh Ports</button>
+
 
         <button onclick="readEdid()">Read EDID</button>
         <button onclick="resetView()">Reset</button>
