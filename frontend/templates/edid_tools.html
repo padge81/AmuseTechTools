@@ -9,23 +9,27 @@
 
     <h1>EDID Tools</h1>
 
-    <div class="controls">
-        <label>Port:</label>
-        <select id="port">
-            <option value="card0-HDMI-A-1">HDMI-A-1</option>
-        </select>
+   <div class="controls">
+    <label>Port:</label>
+    <select id="port">
+        <option value="card0-HDMI-A-1">HDMI-A-1</option>
+    </select>
 
-        <button onclick="readEdid()">Read EDID</button>
-        <button onclick="resetView()">Reset</button>
+    <button onclick="readEdid()">Read EDID</button>
+    <button onclick="resetView()">Reset</button>
+
+    <div class="toggle">
+        <label>
+            <input type="radio" name="viewMode" value="binary" checked onchange="switchView()">
+            Binary
+        </label>
+        <label>
+            <input type="radio" name="viewMode" value="decoded" onchange="switchView()">
+            Decoded
+        </label>
     </div>
-
-    <div class="status" id="status">Idle</div>
-
-    <div class="match" id="match"></div>
-
-    <pre id="output" class="output"></pre>
-
 </div>
+
 
 <script src="{{ url_for('static', filename='js/edid.js') }}"></script>
 

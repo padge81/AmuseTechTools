@@ -18,7 +18,11 @@ function formatHexEdid(hexString) {
 
 
 function readEdid() {
-    const port = document.getElementById("port").value;
+    let lastEdidHex = null;
+	let currentView = "binary";
+
+	
+	const port = document.getElementById("port").value;
     const output = document.getElementById("output");
     const status = document.getElementById("status");
 
@@ -35,6 +39,7 @@ function readEdid() {
             }
 
             status.innerText = "EDID Read OK";
+			lastEdidHex = data.edid_hex;
             output.innerText = formatHexEdid(data.edid_hex);
         })
         .catch(err => {
@@ -43,9 +48,41 @@ function readEdid() {
         });
 }
 
+function switchView() {
+    const selected = document.querySelector("input[name='viewMode']:checked");
+    currentView = selected.value;
+    renderView();
+}
+
+function renderView() {
+    const output = document.getElementById("output");
+
+    if (!lastEdidHex) {
+        output.innerText = "";
+        return;
+    }
+
+    if (currentView === "binary") {
+        output.innerText = formatHexEdid(lastEdidHex);
+    } else {
+        output.innerText = decodeEdidPlaceholder();
+    }
+}
+
+function decodeEdidPlaceholder() {
+    return (
+        "Decoded EDID (coming next):\n\n" +
+        "• Manufacturer: —\n" +
+        "• Product Code: —\n" +
+        "• Serial Number: —\n" +
+        "• Resolution: —\n" +
+        "• Refresh Rate: —\n"
+    );
+}
 
 function resetView() {
+    lastEdidHex = null;
     document.getElementById("output").innerText = "";
-    document.getElementById("match").innerText = "";
-    setStatus("Idle");
+    document.getElementById("status").innerText = "Idle";
 }
+
