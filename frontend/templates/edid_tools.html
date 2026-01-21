@@ -19,7 +19,15 @@
         <button onclick="readEdid()">Read EDID</button>
         <button onclick="resetView()">Reset</button>
 
-        <div class="toggle">
+        
+    </div>
+
+    <!-- ✅ REQUIRED ELEMENTS -->
+    <div class="status" id="status">Idle</div>
+
+    <pre id="output" class="output"></pre>
+
+<div class="toggle">
             <label>
                 <input type="radio" name="viewMode" value="binary" checked onchange="switchView()">
                 Binary
@@ -29,13 +37,6 @@
                 Decoded
             </label>
         </div>
-    </div>
-
-    <!-- ✅ REQUIRED ELEMENTS -->
-    <div class="status" id="status">Idle</div>
-
-    <pre id="output" class="output"></pre>
-
 </div>
 
 <!-- ✅ SCRIPT LAST -->
