@@ -8,6 +8,35 @@ let currentView = "binary"; // "binary" | "decoded"
 // ==============================
 // Helpers
 // ==============================
+
+function loadConnectors() {
+    const portSelect = document.getElementById("port");
+
+    fetch("/edid/connectors")
+        .then(res => res.json())
+        .then(connectors => {
+            portSelect.innerHTML = "";
+
+            if (connectors.length === 0) {
+                const opt = document.createElement("option");
+                opt.text = "No EDID ports found";
+                opt.disabled = true;
+                portSelect.appendChild(opt);
+                return;
+            }
+
+            connectors.forEach(connector => {
+                const opt = document.createElement("option");
+                opt.value = connector;
+                opt.text = connector;
+                portSelect.appendChild(opt);
+            });
+        })
+        .catch(err => {
+            console.error("Connector load failed:", err);
+        });
+}
+
 function getEl(id) {
     return document.getElementById(id);
 }
@@ -121,3 +150,6 @@ function decodeEdidPlaceholder() {
         "• Refresh Rate: —\n"
     );
 }
+document.addEventListener("DOMContentLoaded", () => {
+    loadConnectors();
+});

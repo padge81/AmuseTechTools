@@ -25,3 +25,20 @@ def read_edid():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+@bp.route("/connectors")
+def list_connectors():
+    drm_path = "/sys/class/drm"
+    connectors = []
+
+    for entry in os.listdir(drm_path):
+        edid_path = os.path.join(drm_path, entry, "edid")
+        if os.path.exists(edid_path):
+            try:
+                # Try reading header only
+                read_edid_drm(edid_path)
+                connectors.append(entry)
+            except Exception:
+                pass
+
+    return jsonify(connectors)
