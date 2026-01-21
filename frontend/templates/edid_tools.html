@@ -7,30 +7,38 @@
         <button onclick="location.href='/'">Home</button>
     </div>
 
-    <h1>EDID TOOlS</h1>
+    <h1>EDID Tools</h1>
 
-   <div class="controls">
-    <label>Port:</label>
-    <select id="port">
-        <option value="card0-HDMI-A-1">HDMI-A-1</option>
-    </select>
+    <div class="controls">
+        <label>Port:</label>
+        <select id="port">
+            <option value="card0-HDMI-A-1">HDMI-A-1</option>
+        </select>
 
-    <button onclick="readEdid()">Read EDID</button>
-    <button onclick="resetView()">Reset</button>
+        <button onclick="readEdid()">Read EDID</button>
+        <button onclick="resetView()">Reset</button>
 
-    <div class="toggle">
-        <label>
-            <input type="radio" name="viewMode" value="binary" checked onchange="switchView()">
-            Binary
-        </label>
-        <label>
-            <input type="radio" name="viewMode" value="decoded" onchange="switchView()">
-            Decoded
-        </label>
+        <div class="toggle">
+            <label>
+                <input type="radio" name="viewMode" value="binary" checked onchange="switchView()">
+                Binary
+            </label>
+            <label>
+                <input type="radio" name="viewMode" value="decoded" onchange="switchView()">
+                Decoded
+            </label>
+        </div>
     </div>
+
+    <!-- ✅ REQUIRED ELEMENTS -->
+    <div class="status" id="status">Idle</div>
+
+    <pre id="output" class="output"></pre>
+
 </div>
 
-
+<!-- ✅ SCRIPT LAST -->
 <script src="{{ url_for('static', filename='js/edid.js') }}"></script>
 
 {% endblock %}
+
