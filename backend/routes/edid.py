@@ -31,8 +31,11 @@ def read_edid():
 def match_edid():
     data = request.get_json(silent=True)
 
-    if not data or "edid_hex" not in data:
-        return jsonify({"error": "Missing EDID data"}), 400
+    if not data:
+        return jsonify({"error": "No JSON payload received"}), 400
+
+    if "edid_hex" not in data:
+        return jsonify({"error": "Missing edid_hex"}), 400
 
     try:
         edid = bytes.fromhex(data["edid_hex"])
