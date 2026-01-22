@@ -103,19 +103,19 @@ function readEdid() {
             renderView();
 
             // 🔍 MATCH CHECK
-            fetch("/edid/match", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    connector: document.getElementById("port").value
-  }),
+			fetch("/edid/match", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				connector: document.getElementById("port").value
+			}),
 })
 
         .catch(err => {
             status.innerText = "Error";
             output.innerText = err.toString();
         });
-}
+})
 
 
 function updateMatchDisplay(result) {
