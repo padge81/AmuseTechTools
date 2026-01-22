@@ -7,7 +7,13 @@ from backend.core.edid.compare import find_matching_edid
 bp = Blueprint("edid", __name__, url_prefix="/edid")
 
 # Directory where saved EDID .bin files live
-EDID_DIR = "edid_files"
+EDID_DIR = (
+    Path(__file__)
+    .resolve()
+    .parents[2]   # backend/routes → backend → repo root
+    / "edid_files"
+)
+
 
 
 # --------------------------------------------------
