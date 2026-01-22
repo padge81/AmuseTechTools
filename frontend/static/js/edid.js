@@ -111,6 +111,7 @@ function readEdid() {
 			}),
 })
                 .then(res => res.json())
+				console.log("MATCH RESPONSE:", data);
                 .then(result => {
                     if (result.matched) {
                         const names = result.matches.map(m => m.filename).join(", ");
