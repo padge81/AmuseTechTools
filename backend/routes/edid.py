@@ -1,7 +1,10 @@
 from flask import Blueprint, jsonify, request
 from backend.core.edid.read import read_edid_drm
 from backend.core.edid.compare import find_matching_edid
+from pathlib import Path
 import os
+
+EDID_DIR = Path("edid_files")
 
 bp = Blueprint("edid", __name__, url_prefix="/edid")
 
@@ -41,12 +44,15 @@ def match_edid():
 
         matches = find_matching_edid(edid, EDID_DIR)
 
-        return jsonify({"matches": matches})
+        return jsonify({
+            "matches": matches
+        })
 
     except Exception as e:
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+        
 
 @bp.route("/connectors")
 def list_connectors():
