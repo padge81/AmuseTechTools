@@ -104,23 +104,13 @@ function readEdid() {
 
             // 🔍 MATCH CHECK
             fetch("/edid/match", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ edid_hex: lastEdidHex })
-            })
-                .then(res => res.json())
-                .then(result => {
-                    if (result.matched) {
-                        const names = result.matches.map(m => m.filename).join(", ");
-                        matchDiv.innerText = `✔ Match found: ${names}`;
-                    } else {
-                        matchDiv.innerText = "❌ No matching EDID found";
-                    }
-                })
-                .catch(() => {
-                    matchDiv.innerText = "⚠ Match check failed";
-                });
-        })
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    connector: document.getElementById("port").value
+  }),
+})
+
         .catch(err => {
             status.innerText = "Error";
             output.innerText = err.toString();

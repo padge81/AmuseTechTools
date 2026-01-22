@@ -40,38 +40,24 @@ def read_edid():
 # --------------------------------------------------
 @bp.route("/match", methods=["POST"])
 def match_edid():
-    data = request.get_json(silent=True) or {}
+    data = request.get_json()
+    connector = data.get("connector")
 
-    edid_hex = data.get("edid_hex")
-    if not edid_hex:
-        return jsonify({"error": "No EDID provided"}), 400
+    if not connector:
+        return jsonify({"error": "No connector specified"}), 400
+
+    path = f"/sys/class/drm/{connector}/edid"
 
     try:
-        edid = bytes.fromhex(edid_hex)
-    except ValueError:
-        return jsonify({"error": "Invalid EDID hex"}), 400
-
-    # 🔍 Debug (safe, useful)
-    print("EDID FROM UI")
-    print("Length:", len(edid))
-    print("First 16 bytes:", edid[:16].hex())
-
- # 🔍 DEBUG: list files backend sees
-    try:
-        files = sorted(os.listdir(EDID_DIR))
-        print("EDID_DIR contents:", files)
-    except Exception as e:
-        print("Failed to list EDID_DIR:", e)
-        
-    try:
+        edid = read_edid_drm(path)
         matches = find_matching_edid(edid, EDID_DIR)
+
         return jsonify({
             "matches": matches
         })
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
 
 
 # --------------------------------------------------
