@@ -54,7 +54,7 @@ def match_edid():
         return jsonify({"error": "No connector specified"}), 400
 
     path = f"/sys/class/drm/{connector}/edid"
-
+    print("MATCH DIR:", EDID_DIR)
     try:
         edid = read_edid_drm(path)
         matches = find_matching_edid(edid, EDID_DIR)
