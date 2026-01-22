@@ -41,8 +41,16 @@ def match_edid():
             return jsonify({"error": "No EDID provided"}), 400
 
         edid = bytes.fromhex(edid_hex)
+        
+print("EDID FROM UI:")
+print("Length:", len(edid))
+print("Hash:", edid_hash(edid)
 
-        matches = find_matching_edid(edid, EDID_DIR)
+        matches = find_matching_edid(edid, EDID_DIR
+        print("CHECKING FILE:", filename)
+print("Length:", len(file_edid))
+print("Hash:", edid_hash(file_edid))
+)
 
         return jsonify({
             "matches": matches
