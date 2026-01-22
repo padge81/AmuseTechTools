@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from backend.core.edid.read import read_edid_drm
+from backend.core.edid.compare import find_matching_edid
 import os
 
 bp = Blueprint("edid", __name__, url_prefix="/edid")
@@ -25,6 +26,23 @@ def read_edid():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+        
+@bp.route("/match", methods=["POST"])
+def match_edid():
+    data = request.json
+    edid_hex = data.get("edid_hex")
+
+    if not edid_hex:
+        return jsonify({"error": "No EDID supplied"}), 400
+
+    edid = bytes.fromhex(edid_hex)
+
+    matches = find_matching_edid(edid)
+
+    return jsonify({
+        "matched": bool(matches),
+        "matches": matches,
+    })
 
 @bp.route("/connectors")
 def list_connectors():

@@ -73,48 +73,94 @@ function formatHexEdid(hexString) {
 // EDID actions
 // ==============================
 function readEdid() {
-    const portEl = getEl("port");
-    const output = getEl("output");
-    const status = getEl("status");
+    const port = document.getElementById("port").value;
+    const output = document.getElementById("output");
+    const status = document.getElementById("status");
+    const matchDiv = document.getElementById("match");
 
-    if (!portEl || !output || !status) {
-        console.warn("EDID elements not present on this page");
+    if (!output || !status) {
+        console.error("EDID elements not present on this page");
         return;
     }
 
-    setStatus("Reading EDID...");
+    status.innerText = "Reading EDID...";
     output.innerText = "";
-    lastEdidHex = null;
+    matchDiv.innerText = "";
 
-    fetch(`/edid/read?connector=${portEl.value}`)
+    fetch(`/edid/read?connector=${port}`)
         .then(res => res.json())
         .then(data => {
             if (data.error) {
-                setStatus("Error");
+                status.innerText = "Error";
                 output.innerText = data.error;
                 return;
             }
 
+            status.innerText = "EDID Read OK";
             lastEdidHex = data.edid_hex;
-            setStatus("EDID Read OK");
+
+            // Render binary/decoded view
             renderView();
+
+            // 🔍 MATCH CHECK
+            fetch("/edid/match", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ edid_hex: lastEdidHex })
+            })
+                .then(res => res.json())
+                .then(result => {
+                    if (result.matched) {
+                        const names = result.matches.map(m => m.filename).join(", ");
+                        matchDiv.innerText = `✔ Match found: ${names}`;
+                    } else {
+                        matchDiv.innerText = "❌ No matching EDID found";
+                    }
+                })
+                .catch(() => {
+                    matchDiv.innerText = "⚠ Match check failed";
+                });
         })
         .catch(err => {
-            setStatus("Error");
+            status.innerText = "Error";
             output.innerText = err.toString();
         });
 }
 
 
+function updateMatchDisplay(result) {
+    const matchDiv = document.getElementById("match");
+    const saveBtn = document.getElementById("saveBtn");
+
+    if (result.matched) {
+        const names = result.matches.map(m => m.filename).join(", ");
+        matchDiv.innerText = `✔ Match found: ${names}`;
+        saveBtn.disabled = true;
+    } else {
+        matchDiv.innerText = "❌ No matching EDID found";
+        saveBtn.disabled = false;
+    }
+}
+
 function resetView() {
     const output = getEl("output");
-    if (!output) return;
+    const match = getEl("match");
+    const status = getEl("status");
 
+    // Clear stored state
     lastEdidHex = null;
     currentView = "binary";
-    output.innerText = "";
-    setStatus("Idle");
+
+    // Clear UI
+    if (output) output.innerText = "";
+    if (match) match.innerText = "";
+    if (status) status.innerText = "Idle";
+
+    // Reset radio buttons
+    const binaryRadio = document.querySelector("input[name='viewMode'][value='binary']");
+    if (binaryRadio) binaryRadio.checked = true;
 }
+
 
 
 // ==============================
@@ -158,6 +204,7 @@ function decodeEdidPlaceholder() {
         "• Refresh Rate: —\n"
     );
 }
+
 document.addEventListener("DOMContentLoaded", () => {
     loadConnectors();
 });
