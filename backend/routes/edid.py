@@ -48,6 +48,10 @@ def match_edid():
         print("First 16 bytes:", edid[:16].hex())
     
         matches = find_matching_edid(edid, EDID_DIR)
+        
+        print("CHECKING FILE:", filename)
+        print("Length:", len(file_edid))
+        print("Hash:", edid_hash(file_edid))
 
         return jsonify({
             "matches": matches
