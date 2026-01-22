@@ -40,17 +40,9 @@ def match_edid():
         if not edid_hex:
             return jsonify({"error": "No EDID provided"}), 400
 
-        edid = bytes.fromhex(edid_hex)
-        
-print("EDID FROM UI:")
-print("Length:", len(edid))
-print("Hash:", edid_hash(edid)
+        edid = read_edid_drm() #bytes.fromhex(edid_hex)
 
-        matches = find_matching_edid(edid, EDID_DIR
-        print("CHECKING FILE:", filename)
-print("Length:", len(file_edid))
-print("Hash:", edid_hash(file_edid))
-)
+        matches = find_matching_edid(edid, EDID_DIR)
 
         return jsonify({
             "matches": matches
