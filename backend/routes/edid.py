@@ -32,16 +32,21 @@ def read_edid():
         
 @bp.route("/match", methods=["POST"])
 def match_edid():
-    #try:
-       # data = request.get_json()
-      #  print("MATCH PAYLOAD:", data)
+    try:
+        data = request.get_json()
+       print("MATCH PAYLOAD:", data)
 
-       # edid_hex = data.get("edid_hex")
-        #if not edid_hex:
-        #    return jsonify({"error": "No EDID provided"}), 400
+        edid_hex = data.get("edid_hex")
+        if not edid_hex:
+            return jsonify({"error": "No EDID provided"}), 400
 
-        edid = read_edid_drm() #bytes.fromhex(edid_hex)
-
+        edid = bytes.fromhex(edid_hex)
+        
+    # 🔍 DEBUG LOGGING
+    print("EDID FROM UI")
+    print("Length:", len(edid))
+    print("First 16 bytes:", edid[:16].hex())
+    
         matches = find_matching_edid(edid, EDID_DIR)
 
         return jsonify({
