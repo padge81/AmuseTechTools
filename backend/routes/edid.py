@@ -34,7 +34,7 @@ def read_edid():
 def match_edid():
     try:
         data = request.get_json()
-       print("MATCH PAYLOAD:", data)
+        #print("MATCH PAYLOAD:", data)
 
         edid_hex = data.get("edid_hex")
         if not edid_hex:
