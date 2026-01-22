@@ -4,7 +4,7 @@ from backend.core.edid.compare import find_matching_edid
 from pathlib import Path
 import os
 
-EDID_DIR = Path("edid_files")
+EDID_DIR = "edid_files"
 
 bp = Blueprint("edid", __name__, url_prefix="/edid")
 
