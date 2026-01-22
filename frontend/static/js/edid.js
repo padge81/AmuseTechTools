@@ -118,6 +118,7 @@ function readEdid() {
                         matchDiv.innerText = `✔ Match found: ${names}`;
                     } else {
                         matchDiv.innerText = "❌ No matching EDID found";
+						console.log("MATCH RESPONSE:", data);
                     }
                 })
                 .catch(() => {
