@@ -8,43 +8,6 @@ let currentView = "binary"; // "binary" | "decoded"
 // ==============================
 // Helpers
 // ==============================
-
-function loadConnectors(isRefresh = false) {
-    const portSelect = document.getElementById("port");
-    const previous = portSelect.value;
-
-    fetch("/edid/connectors")
-        .then(res => res.json())
-        .then(connectors => {
-            portSelect.innerHTML = "";
-
-            if (connectors.length === 0) {
-                const opt = document.createElement("option");
-                opt.text = "No EDID ports found";
-                opt.disabled = true;
-                portSelect.appendChild(opt);
-                return;
-            }
-
-            connectors.forEach(connector => {
-                const opt = document.createElement("option");
-                opt.value = connector;
-                opt.text = connector;
-                portSelect.appendChild(opt);
-            });
-
-            // Restore previous selection if still valid
-            if (isRefresh && connectors.includes(previous)) {
-                portSelect.value = previous;
-            }
-        })
-        .catch(err => {
-            console.error("Connector load failed:", err);
-        });
-}
-
-
-
 function getEl(id) {
     return document.getElementById(id);
 }
@@ -70,101 +33,107 @@ function formatHexEdid(hexString) {
 
 
 // ==============================
+// Connector handling
+// ==============================
+function loadConnectors(isRefresh = false) {
+    const portSelect = getEl("port");
+    if (!portSelect) return;
+
+    const previous = portSelect.value;
+
+    fetch("/edid/connectors")
+        .then(res => res.json())
+        .then(connectors => {
+            portSelect.innerHTML = "";
+
+            if (!connectors.length) {
+                const opt = document.createElement("option");
+                opt.text = "No EDID ports found";
+                opt.disabled = true;
+                portSelect.appendChild(opt);
+                return;
+            }
+
+            connectors.forEach(connector => {
+                const opt = document.createElement("option");
+                opt.value = connector;
+                opt.text = connector;
+                portSelect.appendChild(opt);
+            });
+
+            if (isRefresh && connectors.includes(previous)) {
+                portSelect.value = previous;
+            }
+        })
+        .catch(err => console.error("Connector load failed:", err));
+}
+
+
+// ==============================
 // EDID actions
 // ==============================
 function readEdid() {
-    const port = document.getElementById("port").value;
-    const output = document.getElementById("output");
-    const status = document.getElementById("status");
-    const matchDiv = document.getElementById("match");
+    const port = getEl("port")?.value;
+    const output = getEl("output");
+    const matchDiv = getEl("match");
 
-    if (!output || !status) {
-        console.error("EDID elements not present on this page");
+    if (!port || !output) {
+        console.error("EDID UI elements missing");
         return;
     }
 
-    status.innerText = "Reading EDID...";
+    setStatus("Reading EDID...");
     output.innerText = "";
-    matchDiv.innerText = "";
+    if (matchDiv) matchDiv.innerText = "";
 
     fetch(`/edid/read?connector=${port}`)
         .then(res => res.json())
         .then(data => {
             if (data.error) {
-                status.innerText = "Error";
+                setStatus("Error");
                 output.innerText = data.error;
                 return;
             }
 
-            status.innerText = "EDID Read OK";
             lastEdidHex = data.edid_hex;
-
-            // Render binary/decoded view
+            setStatus("EDID Read OK");
             renderView();
 
-            // 🔍 MATCH CHECK
-           fetch("/edid/match", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				connector: document.getElementById("port").value
-			}),
-})
-                .then(res => res.json())
-                .then(result => {
-                    if (result.matched) {
-                        const names = result.matches.map(m => m.filename).join(", ");
-						console.log("MATCH RESPONSE:", data);
-                        matchDiv.innerText = `✔ Match found: ${names}`;
-                    } else {
-                        matchDiv.innerText = "❌ No matching EDID found";
-						console.log("MATCH RESPONSE:", data);
-                    }
-                })
-                .catch(() => {
-                    matchDiv.innerText = "⚠ Match check failed";
-                });
+            // 🔍 MATCH CHECK — FIXED
+            return fetch("/edid/match", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ edid_hex: lastEdidHex })
+            });
+        })
+        .then(res => res?.json())
+        .then(result => {
+            if (!result) return;
+            renderMatch(result.matches);
         })
         .catch(err => {
-            status.innerText = "Error";
+            setStatus("Error");
             output.innerText = err.toString();
         });
 }
 
 
-function updateMatchDisplay(result) {
-    const matchDiv = document.getElementById("match");
-    const saveBtn = document.getElementById("saveBtn");
+// ==============================
+// Match rendering
+// ==============================
+function renderMatch(matches) {
+    const matchDiv = getEl("match");
+    if (!matchDiv) return;
 
-    if (result.matched) {
-        const names = result.matches.map(m => m.filename).join(", ");
-        matchDiv.innerText = `✔ Match found: ${names}`;
-        saveBtn.disabled = true;
-    } else {
+    if (!matches || matches.length === 0) {
         matchDiv.innerText = "❌ No matching EDID found";
-        saveBtn.disabled = false;
+        return;
     }
+
+    matchDiv.innerHTML =
+        "✔ Matching EDID(s):<br>" +
+        matches.map(m => `• ${m.filename}`).join("<br>");
 }
-
-function resetView() {
-    const output = getEl("output");
-    const match = getEl("match");
-    const status = getEl("status");
-
-    // Clear stored state
-    lastEdidHex = null;
-    currentView = "binary";
-
-    // Clear UI
-    if (output) output.innerText = "";
-    if (match) match.innerText = "";
-    if (status) status.innerText = "Idle";
-
-    // Reset radio buttons
-    const binaryRadio = document.querySelector("input[name='viewMode'][value='binary']");
-    if (binaryRadio) binaryRadio.checked = true;
-}
-
 
 
 // ==============================
@@ -187,11 +156,27 @@ function renderView() {
         return;
     }
 
-    if (currentView === "binary") {
-        output.innerText = formatHexEdid(lastEdidHex);
-    } else {
-        output.innerText = decodeEdidPlaceholder();
-    }
+    output.innerText =
+        currentView === "binary"
+            ? formatHexEdid(lastEdidHex)
+            : decodeEdidPlaceholder();
+}
+
+
+// ==============================
+// Reset
+// ==============================
+function resetView() {
+    lastEdidHex = null;
+    currentView = "binary";
+
+    if (getEl("output")) getEl("output").innerText = "";
+    if (getEl("match")) getEl("match").innerText = "";
+    setStatus("Idle");
+
+    const binaryRadio =
+        document.querySelector("input[name='viewMode'][value='binary']");
+    if (binaryRadio) binaryRadio.checked = true;
 }
 
 
@@ -209,6 +194,10 @@ function decodeEdidPlaceholder() {
     );
 }
 
+
+// ==============================
+// Init
+// ==============================
 document.addEventListener("DOMContentLoaded", () => {
     loadConnectors();
 });
