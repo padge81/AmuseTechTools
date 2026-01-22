@@ -29,20 +29,22 @@ def read_edid():
         
 @bp.route("/match", methods=["POST"])
 def match_edid():
-    data = request.json
-    edid_hex = data.get("edid_hex")
+    data = request.get_json(silent=True)
 
-    if not edid_hex:
-        return jsonify({"error": "No EDID supplied"}), 400
+    if not data or "edid_hex" not in data:
+        return jsonify({"error": "Missing EDID data"}), 400
 
-    edid = bytes.fromhex(edid_hex)
+    try:
+        edid = bytes.fromhex(data["edid_hex"])
 
-    matches = find_matching_edid(edid)
+        matches = find_matching_edid(edid, EDID_DIR)
 
-    return jsonify({
-        "matched": bool(matches),
-        "matches": matches,
-    })
+        return jsonify({
+            "matches": matches
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @bp.route("/connectors")
 def list_connectors():
