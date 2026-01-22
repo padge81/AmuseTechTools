@@ -1,14 +1,18 @@
 from flask import Blueprint, jsonify, request
-from backend.core.edid.read import read_edid_drm
-from backend.core.edid.compare import find_matching_edid
-from pathlib import Path
 import os
 
-EDID_DIR = "edid_files"
+from backend.core.edid.read import read_edid_drm
+from backend.core.edid.compare import find_matching_edid
 
 bp = Blueprint("edid", __name__, url_prefix="/edid")
 
+# Directory where saved EDID .bin files live
+EDID_DIR = "edid_files"
 
+
+# --------------------------------------------------
+# READ EDID FROM DRM CONNECTOR
+# --------------------------------------------------
 @bp.route("/read")
 def read_edid():
     connector = request.args.get("connector")
@@ -29,35 +33,43 @@ def read_edid():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-        
+
+
+# --------------------------------------------------
+# MATCH EDID AGAINST SAVED FILES
+# --------------------------------------------------
 @bp.route("/match", methods=["POST"])
 def match_edid():
-    #try:
-        data = request.get_json()
-        #print("MATCH PAYLOAD:", data)
+    data = request.get_json(silent=True) or {}
 
-        edid_hex = data.get("edid_hex")
-        if not edid_hex:
-            return jsonify({"error": "No EDID provided"}), 400
+    edid_hex = data.get("edid_hex")
+    if not edid_hex:
+        return jsonify({"error": "No EDID provided"}), 400
 
+    try:
         edid = bytes.fromhex(edid_hex)
-        
+    except ValueError:
+        return jsonify({"error": "Invalid EDID hex"}), 400
 
-    
+    # 🔍 Debug (safe, useful)
+    print("EDID FROM UI")
+    print("Length:", len(edid))
+    print("First 16 bytes:", edid[:16].hex())
+
+    try:
         matches = find_matching_edid(edid, EDID_DIR)
-        
-
-
         return jsonify({
             "matches": matches
         })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
-        #except Exception as e:
-        #import traceback
-        #traceback.print_exc()
-        #return jsonify({"error": str(e)}), 500
-        
 
+# --------------------------------------------------
+# LIST AVAILABLE DRM CONNECTORS
+# --------------------------------------------------
 @bp.route("/connectors")
 def list_connectors():
     drm_path = "/sys/class/drm"
@@ -65,12 +77,14 @@ def list_connectors():
 
     for entry in os.listdir(drm_path):
         edid_path = os.path.join(drm_path, entry, "edid")
-        if os.path.exists(edid_path):
-            try:
-                # Try reading header only
-                read_edid_drm(edid_path)
-                connectors.append(entry)
-            except Exception:
-                pass
+        if not os.path.exists(edid_path):
+            continue
+
+        try:
+            # Validate EDID header only
+            read_edid_drm(edid_path)
+            connectors.append(entry)
+        except Exception:
+            pass
 
     return jsonify(connectors)
