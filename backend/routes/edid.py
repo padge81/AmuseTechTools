@@ -56,6 +56,13 @@ def match_edid():
     print("Length:", len(edid))
     print("First 16 bytes:", edid[:16].hex())
 
+ # 🔍 DEBUG: list files backend sees
+    try:
+        files = sorted(os.listdir(EDID_DIR))
+        print("EDID_DIR contents:", files)
+    except Exception as e:
+        print("Failed to list EDID_DIR:", e)
+        
     try:
         matches = find_matching_edid(edid, EDID_DIR)
         return jsonify({
