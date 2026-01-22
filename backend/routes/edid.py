@@ -53,10 +53,10 @@ def match_edid():
             "matches": matches
         })
 
-        except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        #except Exception as e:
+        #import traceback
+        #traceback.print_exc()
+        #return jsonify({"error": str(e)}), 500
         
 
 @bp.route("/connectors")
