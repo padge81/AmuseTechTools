@@ -32,7 +32,7 @@ def read_edid():
         
 @bp.route("/match", methods=["POST"])
 def match_edid():
-    try:
+    #try:
         data = request.get_json()
         #print("MATCH PAYLOAD:", data)
 
