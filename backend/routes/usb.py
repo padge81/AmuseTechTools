@@ -3,7 +3,7 @@ USB_MOUNT_BASES = [
     "/mnt"
 ]
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from pathlib import Path
 
 bp = Blueprint("usb", __name__, url_prefix="/usb")
