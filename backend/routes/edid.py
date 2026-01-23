@@ -4,7 +4,7 @@ import os
 
 from backend.core.edid.read import read_edid_drm
 from backend.core.edid.compare import find_matching_edid
-from backend.core.edid.decode import decode_full_text
+from backend.core.edid.decode import decode_basic, edid_to_hex
 
 bp = Blueprint("edid", __name__, url_prefix="/edid")
 
@@ -96,15 +96,32 @@ def list_connectors():
 @bp.route("/decode", methods=["POST"])
 def decode_edid():
     data = request.get_json()
-    edid_hex = data.get("edid_hex")
 
+    edid_hex = data.get("edid_hex")
     if not edid_hex:
         return jsonify({"error": "No EDID provided"}), 400
 
-    edid = bytes.fromhex(edid_hex)
-
     try:
-        decoded = decode_full_text(edid)
-        return jsonify({"decoded": decoded})
+        edid = bytes.fromhex(edid_hex)
+
+        basic = decode_basic(edid)
+
+        decoded_text = (
+            "Decoded EDID\n"
+            "============================\n\n"
+            f"Manufacturer      : {basic['manufacturer']}\n"
+            f"Product Code      : {basic['product_code']}\n"
+            f"Serial Number     : {basic['serial']}\n"
+            f"Manufactured Date : Week {basic['week']} / {basic['year']}\n"
+            f"Extensions        : {basic['extensions']}\n\n"
+            "Raw EDID Hex Dump\n"
+            "----------------------------\n"
+            f"{edid_to_hex(edid)}"
+        )
+
+        return jsonify({
+            "decoded": decoded_text
+        })
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 400

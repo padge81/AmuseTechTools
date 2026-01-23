@@ -13,8 +13,8 @@ function getEl(id) {
 }
 
 function setStatus(text) {
-    const status = getEl("status");
-    if (status) status.innerText = text;
+    const el = getEl("status");
+    if (el) el.innerText = text;
 }
 
 function formatHexEdid(hexString) {
@@ -54,10 +54,10 @@ function loadConnectors(isRefresh = false) {
                 return;
             }
 
-            connectors.forEach(connector => {
+            connectors.forEach(c => {
                 const opt = document.createElement("option");
-                opt.value = connector;
-                opt.text = connector;
+                opt.value = c;
+                opt.text = c;
                 portSelect.appendChild(opt);
             });
 
@@ -77,10 +77,7 @@ function readEdid() {
     const output = getEl("output");
     const matchDiv = getEl("match");
 
-    if (!port || !output) {
-        console.error("EDID UI elements missing");
-        return;
-    }
+    if (!port || !output) return;
 
     setStatus("Reading EDID...");
     output.innerText = "";
@@ -97,19 +94,29 @@ function readEdid() {
 
             lastEdidHex = data.edid_hex;
             setStatus("EDID Read OK");
+
             renderView();
 
-            // 🔍 MATCH CHECK — FIXED
-            return fetch("/edid/match", {
+            // 🔍 Match check
+            fetch("/edid/match", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ edid_hex: lastEdidHex })
-            });
-        })
-        .then(res => res?.json())
-        .then(result => {
-            if (!result) return;
-            renderMatch(result.matches);
+            })
+                .then(res => res.json())
+                .then(result => {
+                    if (!matchDiv) return;
+
+                    if (result.matches && result.matches.length) {
+                        const names = result.matches.map(m => m.filename).join(", ");
+                        matchDiv.innerText = `✔ Match found: ${names}`;
+                    } else {
+                        matchDiv.innerText = "❌ No matching EDID found";
+                    }
+                })
+                .catch(() => {
+                    if (matchDiv) matchDiv.innerText = "⚠ Match check failed";
+                });
         })
         .catch(err => {
             setStatus("Error");
@@ -118,134 +125,67 @@ function readEdid() {
 }
 
 
-// ==============================
-// Match rendering
-// ==============================
-function renderMatch(matches) {
-    const matchDiv = getEl("match");
-    if (!matchDiv) return;
-
-    if (!matches || matches.length === 0) {
-        matchDiv.innerText = "❌ No matching EDID found";
-        return;
-    }
-
-    matchDiv.innerHTML =
-        "✔ Matching EDID(s):<br>" +
-        matches.map(m => `• ${m.filename}`).join("<br>");
-}
-
-
-// ==============================
-// View handling
-// ==============================
-function renderView() {
-    const output = getEl("output");
-    if (!output || !lastEdidHex) return;
-
-    if (currentView === "binary") {
-        output.innerText = formatHexEdid(lastEdidHex);
-        return;
-    }
-
-    // Decoded view
-    output.innerText = "Decoding EDID…";
-
-    fetch("/edid/decode", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ edid_hex: lastEdidHex })
-    })
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                output.innerText = "Decode error:\n" + data.error;
-            } else {
-                output.innerText = data.decoded;
-            }
-        })
-        .catch(err => {
-            output.innerText = "Decode failed:\n" + err.toString();
-        });
-}
-
-// ==============================
-// Reset
-// ==============================
 function resetView() {
     lastEdidHex = null;
     currentView = "binary";
 
-    if (getEl("output")) getEl("output").innerText = "";
-    if (getEl("match")) getEl("match").innerText = "";
+    const output = getEl("output");
+    const match = getEl("match");
+
+    if (output) output.innerText = "";
+    if (match) match.innerText = "";
+
     setStatus("Idle");
 
-    const binaryRadio =
-        document.querySelector("input[name='viewMode'][value='binary']");
+    const binaryRadio = document.querySelector("input[name='viewMode'][value='binary']");
     if (binaryRadio) binaryRadio.checked = true;
 }
 
 
 // ==============================
-// Placeholder decode
+// View handling  ✅ FIXED
+// ==============================
+function switchView() {
+    const selected = document.querySelector("input[name='viewMode']:checked");
+    if (!selected) return;
+
+    currentView = selected.value;
+    renderView();
+}
+
+function renderView() {
+    const output = getEl("output");
+    if (!output) return;
+
+    if (!lastEdidHex) {
+        output.innerText = "";
+        return;
+    }
+
+    if (currentView === "binary") {
+        output.innerText = formatHexEdid(lastEdidHex);
+    } else {
+        output.innerText = decodeEdidPlaceholder();
+    }
+}
+
+
+// ==============================
+// Placeholder decode (backend-ready)
 // ==============================
 function decodeEdidPlaceholder() {
-    if (!lastEdidHex) return "";
-
-    const info = decodeEdid(lastEdidHex);
-
     return (
-        "Decoded EDID\n" +
-        "────────────\n\n" +
-        `Manufacturer : ${info.manufacturer}\n` +
-        `Product Code : ${info.productCode}\n` +
-        `Serial No.   : ${info.serial}\n` +
-        `EDID Version : ${info.version}\n` +
-        `Display Size : ${info.size}\n`
+        "Decoded EDID\n\n" +
+        "Manufacturer: —\n" +
+        "Product Code: —\n" +
+        "Serial Number: —\n" +
+        "Week / Year: —\n" +
+        "Extensions: —\n\n" +
+        "(Full decode coming next)"
     );
 }
 
-function hexToBytes(hex) {
-    const bytes = [];
-    for (let i = 0; i < hex.length; i += 2) {
-        bytes.push(parseInt(hex.substr(i, 2), 16));
-    }
-    return bytes;
-}
 
-function decodeManufacturer(bytes) {
-    const word = (bytes[8] << 8) | bytes[9];
-
-    const c1 = ((word >> 10) & 0x1F) + 64;
-    const c2 = ((word >> 5) & 0x1F) + 64;
-    const c3 = (word & 0x1F) + 64;
-
-    return String.fromCharCode(c1, c2, c3);
-}
-
-function decodeEdid(edidHex) {
-    const b = hexToBytes(edidHex);
-
-    const manufacturer = decodeManufacturer(b);
-    const productCode = b[10] | (b[11] << 8);
-    const serial =
-        b[12] |
-        (b[13] << 8) |
-        (b[14] << 16) |
-        (b[15] << 24);
-
-    const version = `${b[18]}.${b[19]}`;
-    const widthCm = b[21];
-    const heightCm = b[22];
-
-    return {
-        manufacturer,
-        productCode,
-        serial,
-        version,
-        size: `${widthCm} × ${heightCm} cm`,
-    };
-}
 // ==============================
 // Init
 // ==============================
