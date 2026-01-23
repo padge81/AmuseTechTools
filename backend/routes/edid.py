@@ -61,8 +61,7 @@ def match_edid():
     return jsonify({
         "matches": matches
     })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+
 
 
 
