@@ -4,7 +4,7 @@ import os
 
 from backend.core.edid.read import read_edid_drm
 from backend.core.edid.compare import find_matching_edid
-from backend.core.edid.decode import decode_edid_text
+from backend.core.edid.decode import decode_full_text
 
 bp = Blueprint("edid", __name__, url_prefix="/edid")
 
@@ -104,7 +104,7 @@ def decode_edid():
     edid = bytes.fromhex(edid_hex)
 
     try:
-        decoded = decode_edid_text(edid)
+        decoded = decode_full_text(edid)
         return jsonify({"decoded": decoded})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
