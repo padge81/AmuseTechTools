@@ -197,7 +197,7 @@ function renderView() {
 // ==============================
 // Save EDID
 // ==============================
-ok, all save logic and ffunction saveEdid() {
+function saveEdid() {
     const input = document.getElementById("saveFilename");
     const saveBtn = document.getElementById("saveBtn");
 
