@@ -47,7 +47,9 @@ def read_edid():
 # --------------------------------------------------
 @bp.route("/match", methods=["POST"])
 def match_edid():
+
     data = request.get_json()
+    print("MATCH RAW DATA:", data)
     connector = data.get("connector")
 
     if not connector:
