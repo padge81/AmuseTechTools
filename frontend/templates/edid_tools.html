@@ -11,39 +11,40 @@
 
     <div class="controls">
         <label for="port">Port:</label>
-		<select id="port" name="port">
+        <select id="port" name="port">
+            <!-- options populated by JS -->
+        </select>
 
- <button onclick="loadConnectors(true)">↻ Refresh Ports</button>
-
-
+        <button onclick="loadConnectors(true)">↻ Refresh Ports</button>
         <button onclick="readEdid()">Read EDID</button>
         <button onclick="resetView()">Reset</button>
-
-        
     </div>
 
-    <!-- ✅ REQUIRED ELEMENTS -->
+    <!-- Status + match -->
     <div class="status" id="status">Idle</div>
-	<div id="match" class="match"></div>
+    <div id="match" class="match"></div>
 
+    <!-- Output -->
     <pre id="output" class="output"></pre>
 
-<div class="toggle">
-            <label>
-                <input type="radio" name="viewMode" value="binary" checked onchange="switchView()">
-                Binary
-            </label>
-            <label>
-                <input type="radio" name="viewMode" value="decoded" onchange="switchView()">
-                Decoded
-            </label>
-        </div>
+    <!-- View toggle -->
+    <div class="toggle">
+        <label for="view-binary">
+            <input id="view-binary" type="radio" name="viewMode" value="binary" checked onchange="switchView()">
+            Binary
+        </label>
 
-<button id="saveBtn" disabled>Save EDID</button>
+        <label for="view-decoded">
+            <input id="view-decoded" type="radio" name="viewMode" value="decoded" onchange="switchView()">
+            Decoded
+        </label>
+    </div>
+
+    <button id="saveBtn" disabled>Save EDID</button>
 
 </div>
 
-<!-- ✅ SCRIPT LAST -->
+<!-- Script last -->
 <script src="{{ url_for('static', filename='js/edid.js') }}"></script>
 
 {% endblock %}
