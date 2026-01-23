@@ -2,6 +2,7 @@ from flask import Flask, render_template
 
 from backend.routes import system, edid
 from backend.core.system.version import get_version
+from backend.routes import usb
 
 def create_app():
     app = Flask(
@@ -13,6 +14,7 @@ def create_app():
     # Register blueprints
     app.register_blueprint(system.bp)
     app.register_blueprint(edid.bp)
+    app.register_blueprint(usb.bp)
 
     # Main menu
     @app.route("/")

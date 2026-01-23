@@ -41,10 +41,22 @@
     </div>
 
 	<div class="save">
-    <input id="saveFilename" type="text" placeholder="filename.bin">
-    <button id="saveBtn" onclick="saveEdid()" disabled>Save EDID</button>
+		<input id="saveFilename" type="text" placeholder="filename.bin">
+		<button id="saveBtn" onclick="saveEdid()" disabled>Save EDID</button>
 	</div>
 
+	<div class="usb-section">
+		<h3>USB Import / Export</h3>
+
+		<select id="usbDrive"></select>
+		<button onclick="loadUsbDrives()">↻ Refresh USB</button>
+
+		<button onclick="importEdids()">Import from USB</button>
+		<button onclick="exportEdids()">Export to USB</button>
+
+		<div id="usbStatus"></div>
+	</div>
+	
 </div>
 
 <!-- Script last -->

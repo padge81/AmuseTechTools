@@ -247,6 +247,72 @@ function saveEdid() {
         });
 }
 
+// ==============================
+// USB IMPORT EXPORT
+// ==============================
+
+//Load USB drives
+function loadUsbDrives() {
+    const sel = document.getElementById("usbDrive");
+    const status = document.getElementById("usbStatus");
+
+    fetch("/usb/drives")
+        .then(r => r.json())
+        .then(drives => {
+            sel.innerHTML = "";
+
+            if (!drives.length) {
+                status.innerText = "No USB drives found";
+                return;
+            }
+
+            drives.forEach(d => {
+                const opt = document.createElement("option");
+                opt.value = d;
+                opt.text = d;
+                sel.appendChild(opt);
+            });
+
+            status.innerText = "USB ready";
+        });
+}
+
+//IMPORT
+
+function importEdids() {
+    const drive = document.getElementById("usbDrive").value;
+    const status = document.getElementById("usbStatus");
+
+    fetch("/usb/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ drive })
+    })
+    .then(r => r.json())
+    .then(res => {
+        status.innerText =
+            `Imported: ${res.imported.length}, Skipped: ${res.skipped.length}`;
+    });
+}
+
+//EXPORT
+
+function exportEdids() {
+    const drive = document.getElementById("usbDrive").value;
+    const status = document.getElementById("usbStatus");
+
+    fetch("/usb/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ drive })
+    })
+    .then(r => r.json())
+    .then(res => {
+        status.innerText =
+            `Exported: ${res.exported.length}, Skipped: ${res.skipped.length}`;
+    });
+}
+
 
 // ==============================
 // Init
