@@ -98,26 +98,37 @@ function readEdid() {
             renderView();
 
             // 🔍 Match check
-	fetch("/edid/match", {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ edid_hex: lastEdidHex }),
-	})
-	.then(res => res.json())
-	.then(result => {
-		const matchDiv = document.getElementById("match");
-		const saveBtn = document.getElementById("saveBtn");
+            return fetch("/edid/match", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ edid_hex: lastEdidHex }),
+            });
+        })
+        .then(res => {
+            if (!res) return;
+            return res.json();
+        })
+        .then(result => {
+            if (!result) return;
 
-		if (result.matches && result.matches.length > 0) {
-			const names = result.matches.map(m => m.filename).join(", ");
-			matchDiv.innerText = `✔ Match found: ${names}`;
-			saveBtn.disabled = true;
-		} else {
-			matchDiv.innerText = "❌ No matching EDID found";
-			saveBtn.disabled = false;
-		}
-	});
+            const matchDiv = getEl("match");
+            const saveBtn = getEl("saveBtn");
+
+            if (result.matches && result.matches.length > 0) {
+                const names = result.matches.map(m => m.filename).join(", ");
+                if (matchDiv) matchDiv.innerText = `✔ Match found: ${names}`;
+                if (saveBtn) saveBtn.disabled = true;
+            } else {
+                if (matchDiv) matchDiv.innerText = "❌ No matching EDID found";
+                if (saveBtn) saveBtn.disabled = false;
+            }
+        })
+        .catch(err => {
+            setStatus("Error");
+            output.innerText = err.toString();
+        });
 }
+
 
 
 function resetView() {
