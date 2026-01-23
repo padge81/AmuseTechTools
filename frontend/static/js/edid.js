@@ -154,7 +154,7 @@ function switchView() {
 }
 
 function renderView() {
-    const output = getEl("output");
+    const output = document.getElementById("output");
     if (!output) return;
 
     if (!lastEdidHex) {
@@ -164,25 +164,28 @@ function renderView() {
 
     if (currentView === "binary") {
         output.innerText = formatHexEdid(lastEdidHex);
-    } else {
-        output.innerText = decodeEdidPlaceholder();
+        return;
     }
-}
 
+    // 🔍 DECODED VIEW (backend-driven)
+    output.innerText = "Decoding EDID...";
 
-// ==============================
-// Placeholder decode (backend-ready)
-// ==============================
-function decodeEdidPlaceholder() {
-    return (
-        "Decoded EDID\n\n" +
-        "Manufacturer: —\n" +
-        "Product Code: —\n" +
-        "Serial Number: —\n" +
-        "Week / Year: —\n" +
-        "Extensions: —\n\n" +
-        "(Full decode coming next)"
-    );
+    fetch("/edid/decode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ edid_hex: lastEdidHex }),
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                output.innerText = "Decode error:\n" + data.error;
+                return;
+            }
+            output.innerText = data.decoded;
+        })
+        .catch(err => {
+            output.innerText = "Decode failed:\n" + err.toString();
+        });
 }
 
 
