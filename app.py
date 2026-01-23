@@ -1,8 +1,7 @@
 from flask import Flask, render_template
 
-from backend.routes import system, edid
+from backend.routes import system, edid, usb
 from backend.core.system.version import get_version
-from backend.routes import usb
 
 def create_app():
     app = Flask(
