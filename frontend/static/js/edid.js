@@ -197,12 +197,30 @@ function renderView() {
 // ==============================
 // Save EDID
 // ==============================
-function saveEdid() {
-    const filename = document.getElementById("saveFilename").value.trim();
+ok, all save logic and ffunction saveEdid() {
+    const input = document.getElementById("saveFilename");
+    const saveBtn = document.getElementById("saveBtn");
+
+    if (!input) return;
+
+    let filename = input.value.trim();
 
     if (!filename) {
         alert("Please enter a filename");
         return;
+    }
+
+    // ❌ Reject filenames with dots unless it ends with .bin
+    const dotCount = (filename.match(/\./g) || []).length;
+
+    if (dotCount > 1 || (dotCount === 1 && !filename.endsWith(".bin"))) {
+        alert("Filename may only contain one dot, and it must be .bin");
+        return;
+    }
+
+    // ✅ Auto-add .bin if missing
+    if (!filename.endsWith(".bin")) {
+        filename += ".bin";
     }
 
     fetch("/edid/save", {
@@ -213,15 +231,20 @@ function saveEdid() {
             filename: filename,
         }),
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.error) {
-            alert(data.error);
-            return;
-        }
-        alert(`Saved as ${data.filename}`);
-        document.getElementById("saveBtn").disabled = true;
-    });
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            alert(`Saved as ${data.filename}`);
+            input.value = data.filename;
+            if (saveBtn) saveBtn.disabled = true;
+        })
+        .catch(err => {
+            alert("Save failed: " + err.toString());
+        });
 }
 
 
