@@ -139,29 +139,35 @@ function renderMatch(matches) {
 // ==============================
 // View handling
 // ==============================
-function switchView() {
-    const selected = document.querySelector("input[name='viewMode']:checked");
-    if (!selected) return;
-
-    currentView = selected.value;
-    renderView();
-}
-
 function renderView() {
     const output = getEl("output");
-    if (!output) return;
+    if (!output || !lastEdidHex) return;
 
-    if (!lastEdidHex) {
-        output.innerText = "";
+    if (currentView === "binary") {
+        output.innerText = formatHexEdid(lastEdidHex);
         return;
     }
 
-    output.innerText =
-        currentView === "binary"
-            ? formatHexEdid(lastEdidHex)
-            : decodeEdidPlaceholder();
-}
+    // Decoded view
+    output.innerText = "Decoding EDID…";
 
+    fetch("/edid/decode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ edid_hex: lastEdidHex })
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                output.innerText = "Decode error:\n" + data.error;
+            } else {
+                output.innerText = data.decoded;
+            }
+        })
+        .catch(err => {
+            output.innerText = "Decode failed:\n" + err.toString();
+        });
+}
 
 // ==============================
 // Reset

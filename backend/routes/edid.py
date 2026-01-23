@@ -4,6 +4,7 @@ import os
 
 from backend.core.edid.read import read_edid_drm
 from backend.core.edid.compare import find_matching_edid
+from backend.core.edid.decode import decode_edid_text
 
 bp = Blueprint("edid", __name__, url_prefix="/edid")
 
@@ -86,3 +87,24 @@ def list_connectors():
             pass
 
     return jsonify(connectors)
+
+
+
+# ----------------------------------------------------
+# Decode End Point
+# ----------------------------------------------------
+@bp.route("/decode", methods=["POST"])
+def decode_edid():
+    data = request.get_json()
+    edid_hex = data.get("edid_hex")
+
+    if not edid_hex:
+        return jsonify({"error": "No EDID provided"}), 400
+
+    edid = bytes.fromhex(edid_hex)
+
+    try:
+        decoded = decode_edid_text(edid)
+        return jsonify({"decoded": decoded})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
