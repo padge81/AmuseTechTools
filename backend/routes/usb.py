@@ -55,7 +55,7 @@ def import_edids():
 
     # Cache local EDIDs for fast comparison
     local_edids = []
-    for file in EDID_DIR.glob("*.bin"):
+    for file in EDID_DIR.rglob("*.bin"):
         try:
             local_edids.append(file.read_bytes())
         except OSError:
