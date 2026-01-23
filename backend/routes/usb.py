@@ -32,6 +32,62 @@ def list_drives():
 
     return jsonify(drives)
 
+# -------------------------------------------------
+# IMPORT EDIDS FROM USB
+# -------------------------------------------------
+
+@bp.route("/import", methods=["POST"])
+def import_edids():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No request data"}), 400
+
+    drive = Path(data.get("drive", ""))
+
+    if not drive.exists() or not drive.is_dir():
+        return jsonify({"error": "Drive not found"}), 400
+
+    if not EDID_DIR.exists():
+        EDID_DIR.mkdir(parents=True, exist_ok=True)
+
+    imported = []
+    skipped = []
+
+    # Cache local EDIDs for fast comparison
+    local_edids = []
+    for file in EDID_DIR.glob("*.bin"):
+        try:
+            local_edids.append(file.read_bytes())
+        except OSError:
+            pass
+
+    # Scan USB for .bin files
+    for usb_file in drive.glob("*.bin"):
+        try:
+            usb_edid = usb_file.read_bytes()
+        except OSError:
+            skipped.append(usb_file.name)
+            continue
+
+        # Exact byte-for-byte comparison
+        if usb_edid in local_edids:
+            skipped.append(usb_file.name)
+            continue
+
+        target = EDID_DIR / usb_file.name
+
+        # Avoid overwrite even if name matches but content differs
+        if target.exists():
+            skipped.append(usb_file.name)
+            continue
+
+        target.write_bytes(usb_edid)
+        imported.append(usb_file.name)
+
+    return jsonify({
+        "imported": imported,
+        "skipped": skipped
+    })
 
 # -------------------------------------------------
 # EXPORT EDIDS TO USB
