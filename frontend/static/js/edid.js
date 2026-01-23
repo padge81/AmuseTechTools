@@ -184,17 +184,62 @@ function resetView() {
 // Placeholder decode
 // ==============================
 function decodeEdidPlaceholder() {
+    if (!lastEdidHex) return "";
+
+    const info = decodeEdid(lastEdidHex);
+
     return (
-        "Decoded EDID (coming next):\n\n" +
-        "• Manufacturer: —\n" +
-        "• Product Code: —\n" +
-        "• Serial Number: —\n" +
-        "• Resolution: —\n" +
-        "• Refresh Rate: —\n"
+        "Decoded EDID\n" +
+        "────────────\n\n" +
+        `Manufacturer : ${info.manufacturer}\n` +
+        `Product Code : ${info.productCode}\n` +
+        `Serial No.   : ${info.serial}\n` +
+        `EDID Version : ${info.version}\n` +
+        `Display Size : ${info.size}\n`
     );
 }
 
+function hexToBytes(hex) {
+    const bytes = [];
+    for (let i = 0; i < hex.length; i += 2) {
+        bytes.push(parseInt(hex.substr(i, 2), 16));
+    }
+    return bytes;
+}
 
+function decodeManufacturer(bytes) {
+    const word = (bytes[8] << 8) | bytes[9];
+
+    const c1 = ((word >> 10) & 0x1F) + 64;
+    const c2 = ((word >> 5) & 0x1F) + 64;
+    const c3 = (word & 0x1F) + 64;
+
+    return String.fromCharCode(c1, c2, c3);
+}
+
+function decodeEdid(edidHex) {
+    const b = hexToBytes(edidHex);
+
+    const manufacturer = decodeManufacturer(b);
+    const productCode = b[10] | (b[11] << 8);
+    const serial =
+        b[12] |
+        (b[13] << 8) |
+        (b[14] << 16) |
+        (b[15] << 24);
+
+    const version = `${b[18]}.${b[19]}`;
+    const widthCm = b[21];
+    const heightCm = b[22];
+
+    return {
+        manufacturer,
+        productCode,
+        serial,
+        version,
+        size: `${widthCm} × ${heightCm} cm`,
+    };
+}
 // ==============================
 // Init
 // ==============================
