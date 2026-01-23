@@ -47,23 +47,20 @@ def read_edid():
 # --------------------------------------------------
 @bp.route("/match", methods=["POST"])
 def match_edid():
-
     data = request.get_json()
-    print("MATCH RAW DATA:", data)
-    connector = data.get("connector")
+    if not data or "edid_hex" not in data:
+        return jsonify({"error": "No EDID provided"}), 400
 
-    if not connector:
-        return jsonify({"error": "No connector specified"}), 400
-
-    path = f"/sys/class/drm/{connector}/edid"
-    print("MATCH DIR:", EDID_DIR)
     try:
-        edid = read_edid_drm(path)
-        matches = find_matching_edid(edid, EDID_DIR)
+        edid = bytes.fromhex(data["edid_hex"])
+    except ValueError:
+        return jsonify({"error": "Invalid EDID hex"}), 400
 
-        return jsonify({
-            "matches": matches
-        })
+    matches = find_matching_edid(edid, EDID_DIR)
+
+    return jsonify({
+        "matches": matches
+    })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
