@@ -63,7 +63,30 @@ def match_edid():
         "matches": matches
     })
 
+@bp.route("/save", methods=["POST"])
+def save_edid():
+    data = request.get_json()
 
+    edid_hex = data.get("edid_hex")
+    filename = data.get("filename")
+
+    if not edid_hex or not filename:
+        return jsonify({"error": "Missing EDID or filename"}), 400
+
+    if not filename.lower().endswith(".bin"):
+        return jsonify({"error": "Filename must end with .bin"}), 400
+
+    target = EDID_DIR / filename
+
+    if target.exists():
+        return jsonify({"error": "File already exists"}), 400
+
+    try:
+        edid = bytes.fromhex(edid_hex)
+        target.write_bytes(edid)
+        return jsonify({"saved": True, "filename": filename})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # --------------------------------------------------

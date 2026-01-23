@@ -98,30 +98,25 @@ function readEdid() {
             renderView();
 
             // 🔍 Match check
-            fetch("/edid/match", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ edid_hex: lastEdidHex })
-            })
-                .then(res => res.json())
-                .then(result => {
-                    if (!matchDiv) return;
+	fetch("/edid/match", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ edid_hex: lastEdidHex }),
+	})
+	.then(res => res.json())
+	.then(result => {
+		const matchDiv = document.getElementById("match");
+		const saveBtn = document.getElementById("saveBtn");
 
-                    if (result.matches && result.matches.length) {
-                        const names = result.matches.map(m => m.filename).join(", ");
-                        matchDiv.innerText = `✔ Match found: ${names}`;
-                    } else {
-                        matchDiv.innerText = "❌ No matching EDID found";
-                    }
-                })
-                .catch(() => {
-                    if (matchDiv) matchDiv.innerText = "⚠ Match check failed";
-                });
-        })
-        .catch(err => {
-            setStatus("Error");
-            output.innerText = err.toString();
-        });
+		if (result.matches && result.matches.length > 0) {
+			const names = result.matches.map(m => m.filename).join(", ");
+			matchDiv.innerText = `✔ Match found: ${names}`;
+			saveBtn.disabled = true;
+		} else {
+			matchDiv.innerText = "❌ No matching EDID found";
+			saveBtn.disabled = false;
+		}
+	});
 }
 
 
@@ -186,6 +181,36 @@ function renderView() {
         .catch(err => {
             output.innerText = "Decode failed:\n" + err.toString();
         });
+}
+
+// ==============================
+// Save EDID
+// ==============================
+function saveEdid() {
+    const filename = document.getElementById("saveFilename").value.trim();
+
+    if (!filename) {
+        alert("Please enter a filename");
+        return;
+    }
+
+    fetch("/edid/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            edid_hex: lastEdidHex,
+            filename: filename,
+        }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        alert(`Saved as ${data.filename}`);
+        document.getElementById("saveBtn").disabled = true;
+    });
 }
 
 
