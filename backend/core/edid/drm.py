@@ -35,7 +35,7 @@ def resolve_connector_i2c(connector: str) -> int:
 
         suffix = p.name.removeprefix("i2c-")
         if suffix.isdigit():
-        i2c_dirs.append(p)
+            i2c_dirs.append(p)
 
     if not i2c_dirs:
         raise EDIDWriteError(f"No I2C bus found for {connector}")
