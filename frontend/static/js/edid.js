@@ -256,7 +256,7 @@ function loadUsbDrives() {
     const status = getEl("usbStatus");
     if (!sel || !status) return;
 
-    fetch("/usb/drives")
+    fetch("/usb/status")
         .then(r => r.json())
         .then(drives => {
             sel.innerHTML = "";
