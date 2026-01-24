@@ -331,54 +331,88 @@ function scanUsb() {
 //IMPORT
 
 function importEdids() {
-    const mount = getEl("usbDrive").value;
+    const mount = getEl("usbDrive")?.value;
     const status = getEl("usbStatus");
 
-    const files = Array.from(
-        document.querySelectorAll("#usbFiles input:checked")
-    ).map(cb => cb.value);
-
-    if (!files.length) {
-        status.innerText = "Nothing selected to import";
+    if (!mount) {
+        alert("Please select a USB drive");
         return;
     }
 
     fetch("/usb/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mount, files })
+        body: JSON.stringify({ mount, dry_run: true })
     })
     .then(r => r.json())
-    .then(res => {
-        status.innerText = `Imported: ${res.imported.length}`;
-        scanUsb(); // refresh view
+    .then(summary => {
+        const msg =
+`Import from USB?
+
+New files: ${summary.new}
+Skipped (already exist): ${summary.skipped}
+
+Proceed?`;
+
+        if (!confirm(msg)) return;
+
+        return fetch("/usb/import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mount, dry_run: false })
+        });
+    })
+    .then(r => r?.json())
+    .then(result => {
+        if (!result) return;
+        status.innerText = `Import complete: ${result.new} new, ${result.skipped} skipped`;
+    })
+    .catch(() => {
+        status.innerText = "Import failed";
     });
 }
 
 //EXPORT
 
 function exportEdids() {
-    const mount = getEl("usbDrive").value;
+    const mount = getEl("usbDrive")?.value;
     const status = getEl("usbStatus");
 
-    const files = Array.from(
-        document.querySelectorAll("#usbFiles input:not(:checked)")
-    ).map(cb => cb.value);
-
-    if (!files.length) {
-        status.innerText = "Nothing to export";
+    if (!mount) {
+        alert("Please select a USB drive");
         return;
     }
 
     fetch("/usb/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mount, files })
+        body: JSON.stringify({ mount, dry_run: true })
     })
     .then(r => r.json())
-    .then(res => {
-        status.innerText = `Exported: ${res.exported.length}`;
-        scanUsb();
+    .then(summary => {
+        const msg =
+`Export to USB?
+
+New files: ${summary.new}
+Skipped (already exist): ${summary.skipped}
+
+Proceed?`;
+
+        if (!confirm(msg)) return;
+
+        return fetch("/usb/export", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mount, dry_run: false })
+        });
+    })
+    .then(r => r?.json())
+    .then(result => {
+        if (!result) return;
+        status.innerText = `Export complete: ${result.new} new, ${result.skipped} skipped`;
+    })
+    .catch(() => {
+        status.innerText = "Export failed";
     });
 }
 

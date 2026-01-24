@@ -91,6 +91,32 @@ def usb_scan():
 
     return jsonify(files)
 
+# ----------------------------
+# SCAN LOCALY FOR EDIDS
+# ----------------------------
+
+@bp.route("/scan_local")
+def usb_scan_local():
+    mount = request.args.get("mount")
+    if not mount or not os.path.isdir(mount):
+        return jsonify({"error": "Invalid mount"}), 400
+
+    mount_path = Path(mount)
+
+    usb_hashes = {
+        file_hash(f): f.name
+        for f in mount_path.glob("*.bin")
+    }
+
+    files = []
+    for f in EDID_DIR.glob("*.bin"):
+        h = file_hash(f)
+        files.append({
+            "name": f.name,
+            "exists": h in usb_hashes,
+        })
+
+    return jsonify(files)
 
 # ----------------------------
 # IMPORT
