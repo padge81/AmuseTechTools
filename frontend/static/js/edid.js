@@ -268,14 +268,15 @@ function loadUsbDrives() {
 
             drives.forEach(d => {
                 const opt = document.createElement("option");
-                opt.value = d;
-                opt.text = d;
+                opt.value = d.path;   // ✅ MUST be string
+                opt.textContent = d.name;
                 sel.appendChild(opt);
             });
 
             status.innerText = "USB ready";
         })
-        .catch(() => {
+        .catch(err => {
+            console.error(err);
             status.innerText = "USB scan failed";
         });
 }
