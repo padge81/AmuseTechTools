@@ -1,78 +1,154 @@
-@app.route("/usb/status")
+from flask import Blueprint, jsonify, request
+from pathlib import Path
+import os
+import shutil
+import hashlib
+
+bp = Blueprint("usb", __name__, url_prefix="/usb")
+
+EDID_DIR = Path("edid_files")
+USB_MOUNT_BASES = ["/media", "/mnt"]
+
+
+# ----------------------------
+# Helpers
+# ----------------------------
+
+def file_hash(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        h.update(f.read())
+    return h.hexdigest()
+
+
+def list_usb_mounts():
+    mounts = []
+    for base in USB_MOUNT_BASES:
+        base_path = Path(base)
+        if not base_path.exists():
+            continue
+        for p in base_path.iterdir():
+            if p.is_dir():
+                mounts.append(str(p))
+    return mounts
+
+
+# ----------------------------
+# USB STATUS
+# ----------------------------
+
+@bp.route("/status")
 def usb_status():
     mounts = list_usb_mounts()
     result = []
+
     for m in mounts:
         result.append({
             "path": m,
             "name": os.path.basename(m),
-            "read_only": is_read_only(m)
         })
+
     return jsonify(result)
 
-@app.route("/usb/scan")
+
+# ----------------------------
+# SCAN USB FOR EDIDS
+# ----------------------------
+
+@bp.route("/scan")
 def usb_scan():
     mount = request.args.get("mount")
     if not mount or not os.path.isdir(mount):
         return jsonify({"error": "Invalid mount"}), 400
 
-    usb_bins = [
-        f for f in os.listdir(mount)
-        if f.lower().endswith(".bin")
-        and os.path.isfile(os.path.join(mount, f))
-    ]
+    mount_path = Path(mount)
 
+    usb_bins = list(mount_path.glob("*.bin"))
     local_hashes = {
-        f: file_hash(os.path.join(SAVE_DIR, f))
-        for f in os.listdir(SAVE_DIR)
-        if f.lower().endswith(".bin")
+        file_hash(f): f.name
+        for f in EDID_DIR.glob("*.bin")
     }
 
     files = []
     for f in usb_bins:
-        usb_path = os.path.join(mount, f)
-        usb_hash = file_hash(usb_path)
-        exists = usb_hash in local_hashes.values()
-
+        h = file_hash(f)
         files.append({
-            "name": f,
-            "exists": exists
+            "name": f.name,
+            "exists": h in local_hashes,
         })
 
     return jsonify(files)
 
-@app.route("/usb/import", methods=["POST"])
+
+# ----------------------------
+# IMPORT
+# ----------------------------
+
+@bp.route("/import", methods=["POST"])
 def usb_import():
     data = request.json
     mount = data.get("mount")
     files = data.get("files", [])
 
+    if not mount or not os.path.isdir(mount):
+        return jsonify({"error": "Invalid mount"}), 400
+
     imported = []
+    skipped = []
 
-    for f in files:
-        src = os.path.join(mount, f)
-        dst = os.path.join(SAVE_DIR, f)
+    for name in files:
+        src = Path(mount) / name
+        dst = EDID_DIR / name
 
-        if not os.path.exists(dst):
-            shutil.copy2(src, dst)
-            imported.append(f)
+        if not src.exists():
+            continue
 
-    return jsonify({"imported": imported})
+        if dst.exists():
+            if file_hash(src) == file_hash(dst):
+                skipped.append(name)
+                continue
 
-@app.route("/usb/export", methods=["POST"])
+        shutil.copy2(src, dst)
+        imported.append(name)
+
+    return jsonify({
+        "imported": imported,
+        "skipped": skipped
+    })
+
+
+# ----------------------------
+# EXPORT
+# ----------------------------
+
+@bp.route("/export", methods=["POST"])
 def usb_export():
     data = request.json
     mount = data.get("mount")
     files = data.get("files", [])
 
+    if not mount or not os.path.isdir(mount):
+        return jsonify({"error": "Invalid mount"}), 400
+
     exported = []
+    skipped = []
 
-    for f in files:
-        src = os.path.join(SAVE_DIR, f)
-        dst = os.path.join(mount, f)
+    for name in files:
+        src = EDID_DIR / name
+        dst = Path(mount) / name
 
-        if os.path.exists(src) and not os.path.exists(dst):
-            shutil.copy2(src, dst)
-            exported.append(f)
+        if not src.exists():
+            continue
 
-    return jsonify({"exported": exported})
+        if dst.exists():
+            if file_hash(src) == file_hash(dst):
+                skipped.append(name)
+                continue
+
+        shutil.copy2(src, dst)
+        exported.append(name)
+
+    return jsonify({
+        "exported": exported,
+        "skipped": skipped
+    })
