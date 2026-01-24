@@ -287,7 +287,10 @@ function scanUsb() {
     const status = getEl("usbStatus");
     const list = getEl("usbFiles");
 
-    if (!mount) return;
+    if (!mount || mount === "[object Object]") {
+        status.innerText = "Invalid USB mount";
+        return;
+    }
 
     status.innerText = "Scanning USB...";
     list.innerHTML = "";
@@ -320,10 +323,11 @@ function scanUsb() {
             status.innerText = "Scan complete";
         })
         .catch(err => {
-            status.innerText = "Scan failed";
             console.error(err);
+            status.innerText = "Scan failed";
         });
 }
+
 //IMPORT
 
 function importEdids() {
