@@ -27,7 +27,15 @@ def resolve_connector_i2c(connector: str) -> int:
     if not ddc_path.exists():
         raise EDIDWriteError(f"No DDC directory for {connector}")
 
-    i2c_dirs = list(ddc_path.glob("i2c-*"))
+    i2c_dirs = []
+
+    for p in ddc_path.iterdir():
+        if not p.name.startswith("i2c-"):
+            continue
+
+        suffix = p.name.removeprefix("i2c-")
+        if suffix.isdigit():
+        i2c_dirs.append(p)
 
     if not i2c_dirs:
         raise EDIDWriteError(f"No I2C bus found for {connector}")
