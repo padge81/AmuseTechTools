@@ -1,4 +1,4 @@
-from backend.core.edid.write_i2c import write_edid_for_connector
+from backend.core.edid.write_i2c import write_edid_for_connector, edid
 
 result = write_edid_for_connector(
     connector="HDMI-A-1",
