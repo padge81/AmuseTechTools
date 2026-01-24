@@ -92,28 +92,24 @@
     <!-- ============================= -->
     <!-- USB Import / Export -->
     <!-- ============================= -->
-    <div class="usb-section">
+	<div class="usb-section">
+		<h3>USB Import / Export</h3>
 
-        <h3>USB Import / Export</h3>
+		<div class="usb-controls">
+			<select id="usbDrive"></select>
+			<button onclick="loadUsbDrives()">↻ Refresh USB</button>
+			<button onclick="scanUsb()">Scan USB</button>
+		</div>
 
-        <div class="usb-controls">
-            <label for="usbDrive">USB Drive:</label>
-            <select id="usbDrive"></select>
+		<div id="usbFiles" class="usb-files"></div>
 
-            <button onclick="loadUsbDrives()">↻ Refresh USB</button>
-        </div>
+		<div class="usb-actions">
+			<button onclick="importEdids()">Import selected</button>
+			<button onclick="exportEdids()">Export selected</button>
+		</div>
 
-        <div class="usb-actions">
-            <button onclick="importEdids()">Import from USB</button>
-            <button onclick="exportEdids()">Export to USB</button>
-        </div>
-
-        <div id="usbStatus" class="status">Idle</div>
-
-        <!-- Optional: future file list goes here -->
-        <!-- <div id="usbFiles"></div> -->
-
-    </div>
+		<div id="usbStatus" class="status"></div>
+	</div>
 
 </div>
 

@@ -3,7 +3,7 @@
 // ==============================
 let lastEdidHex = null;
 let currentView = "binary"; // "binary" | "decoded"
-
+let usbScanResults = [];
 
 // ==============================
 // Helpers
@@ -251,68 +251,102 @@ function saveEdid() {
 // USB IMPORT EXPORT
 // ==============================
 
-//Load USB drives
-function loadUsbDrives() {
-    const sel = document.getElementById("usbDrive");
-    const status = document.getElementById("usbStatus");
+//Scan USB Drives
+function scanUsb() {
+    const mount = getEl("usbDrive")?.value;
+    const status = getEl("usbStatus");
+    const list = getEl("usbFiles");
 
-    fetch("/usb/drives")
+    if (!mount) return;
+
+    status.innerText = "Scanning USB...";
+    list.innerHTML = "";
+
+    fetch(`/usb/scan?mount=${encodeURIComponent(mount)}`)
         .then(r => r.json())
-        .then(drives => {
-            sel.innerHTML = "";
+        .then(files => {
+            usbScanResults = files;
 
-            if (!drives.length) {
-                status.innerText = "No USB drives found";
+            if (!files.length) {
+                status.innerText = "No .bin files found";
                 return;
             }
 
-            drives.forEach(d => {
-                const opt = document.createElement("option");
-                opt.value = d;
-                opt.text = d;
-                sel.appendChild(opt);
+            files.forEach(f => {
+                const row = document.createElement("div");
+                row.className = "usb-file";
+
+                row.innerHTML = `
+                    <label>
+                        <input type="checkbox" value="${f.name}" ${f.exists ? "disabled" : ""}>
+                        ${f.name}
+                        ${f.exists ? " (already exists)" : ""}
+                    </label>
+                `;
+
+                list.appendChild(row);
             });
 
-            status.innerText = "USB ready";
+            status.innerText = "Scan complete";
+        })
+        .catch(err => {
+            status.innerText = "Scan failed";
+            console.error(err);
         });
 }
-
 //IMPORT
 
 function importEdids() {
-    const drive = document.getElementById("usbDrive").value;
-    const status = document.getElementById("usbStatus");
+    const mount = getEl("usbDrive").value;
+    const status = getEl("usbStatus");
+
+    const files = Array.from(
+        document.querySelectorAll("#usbFiles input:checked")
+    ).map(cb => cb.value);
+
+    if (!files.length) {
+        status.innerText = "Nothing selected to import";
+        return;
+    }
 
     fetch("/usb/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ drive })
+        body: JSON.stringify({ mount, files })
     })
     .then(r => r.json())
     .then(res => {
-        status.innerText =
-            `Imported: ${res.imported.length}, Skipped: ${res.skipped.length}`;
+        status.innerText = `Imported: ${res.imported.length}`;
+        scanUsb(); // refresh view
     });
 }
 
 //EXPORT
 
 function exportEdids() {
-    const drive = document.getElementById("usbDrive").value;
-    const status = document.getElementById("usbStatus");
+    const mount = getEl("usbDrive").value;
+    const status = getEl("usbStatus");
+
+    const files = Array.from(
+        document.querySelectorAll("#usbFiles input:not(:checked)")
+    ).map(cb => cb.value);
+
+    if (!files.length) {
+        status.innerText = "Nothing to export";
+        return;
+    }
 
     fetch("/usb/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ drive })
+        body: JSON.stringify({ mount, files })
     })
     .then(r => r.json())
     .then(res => {
-        status.innerText =
-            `Exported: ${res.exported.length}, Skipped: ${res.skipped.length}`;
+        status.innerText = `Exported: ${res.exported.length}`;
+        scanUsb();
     });
 }
-
 
 // ==============================
 // Init
