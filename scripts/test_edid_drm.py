@@ -1,4 +1,10 @@
-from backend.core.edid.drm import resolve_connector_i2c
+from backend.core.edid.write_i2c import write_edid_for_connector
 
-print(resolve_connector_i2c("HDMI-A-1"))
-print(resolve_connector_i2c("DP-1"))
+result = write_edid_for_connector(
+    connector="HDMI-A-1",
+    edid=edid,
+    verify=False,
+    force=force,
+)
+
+print(result)
