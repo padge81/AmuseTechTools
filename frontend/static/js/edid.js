@@ -281,52 +281,6 @@ function loadUsbDrives() {
         });
 }
 
-//Scan USB Drives
-function scanUsb() {
-    const mount = getEl("usbDrive")?.value;
-    const status = getEl("usbStatus");
-    const list = getEl("usbFiles");
-
-    if (!mount || mount === "[object Object]") {
-        status.innerText = "Invalid USB mount";
-        return;
-    }
-
-    status.innerText = "Scanning USB...";
-    list.innerHTML = "";
-
-    fetch(`/usb/scan?mount=${encodeURIComponent(mount)}`)
-        .then(r => r.json())
-        .then(files => {
-            usbScanResults = files;
-
-            if (!files.length) {
-                status.innerText = "No .bin files found";
-                return;
-            }
-
-            files.forEach(f => {
-                const row = document.createElement("div");
-                row.className = "usb-file";
-
-                row.innerHTML = `
-                    <label>
-                        <input type="checkbox" value="${f.name}" ${f.exists ? "disabled" : ""}>
-                        ${f.name}
-                        ${f.exists ? " (already exists)" : ""}
-                    </label>
-                `;
-
-                list.appendChild(row);
-            });
-
-            status.innerText = "Scan complete";
-        })
-        .catch(err => {
-            console.error(err);
-            status.innerText = "Scan failed";
-        });
-}
 
 //IMPORT
 
@@ -339,6 +293,7 @@ function importEdids() {
         return;
     }
 
+    // 1️⃣ Preview
     fetch("/usb/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -356,6 +311,7 @@ Proceed?`;
 
         if (!confirm(msg)) return;
 
+        // 2️⃣ Commit
         return fetch("/usb/import", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -367,7 +323,8 @@ Proceed?`;
         if (!result) return;
         status.innerText = `Import complete: ${result.new} new, ${result.skipped} skipped`;
     })
-    .catch(() => {
+    .catch(err => {
+        console.error(err);
         status.innerText = "Import failed";
     });
 }
@@ -383,6 +340,7 @@ function exportEdids() {
         return;
     }
 
+    // 1️⃣ Preview
     fetch("/usb/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -400,6 +358,7 @@ Proceed?`;
 
         if (!confirm(msg)) return;
 
+        // 2️⃣ Commit
         return fetch("/usb/export", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -411,7 +370,8 @@ Proceed?`;
         if (!result) return;
         status.innerText = `Export complete: ${result.new} new, ${result.skipped} skipped`;
     })
-    .catch(() => {
+    .catch(err => {
+        console.error(err);
         status.innerText = "Export failed";
     });
 }

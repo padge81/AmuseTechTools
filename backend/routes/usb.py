@@ -126,7 +126,7 @@ def usb_scan_local():
 def usb_import():
     data = request.json
     mount = data.get("mount")
-    files = data.get("files", [])
+    dry_run = data.get("dry_run", False)
 
     if not mount or not os.path.isdir(mount):
         return jsonify({"error": "Invalid mount"}), 400
@@ -134,26 +134,21 @@ def usb_import():
     imported = []
     skipped = []
 
-    for name in files:
-        src = Path(mount) / name
-        dst = EDID_DIR / name
+    for src in Path(mount).glob("*.bin"):
+        dst = EDID_DIR / src.name
 
-        if not src.exists():
+        if dst.exists() and file_hash(src) == file_hash(dst):
+            skipped.append(src.name)
             continue
 
-        if dst.exists():
-            if file_hash(src) == file_hash(dst):
-                skipped.append(name)
-                continue
-
-        shutil.copy2(src, dst)
-        imported.append(name)
+        imported.append(src.name)
+        if not dry_run:
+            shutil.copy2(src, dst)
 
     return jsonify({
-        "imported": imported,
-        "skipped": skipped
+        "new": len(imported),
+        "skipped": len(skipped)
     })
-
 
 # ----------------------------
 # EXPORT
@@ -163,7 +158,7 @@ def usb_import():
 def usb_export():
     data = request.json
     mount = data.get("mount")
-    files = data.get("files", [])
+    dry_run = data.get("dry_run", False)
 
     if not mount or not os.path.isdir(mount):
         return jsonify({"error": "Invalid mount"}), 400
@@ -171,22 +166,18 @@ def usb_export():
     exported = []
     skipped = []
 
-    for name in files:
-        src = EDID_DIR / name
-        dst = Path(mount) / name
+    for src in EDID_DIR.glob("*.bin"):
+        dst = Path(mount) / src.name
 
-        if not src.exists():
+        if dst.exists() and file_hash(src) == file_hash(dst):
+            skipped.append(src.name)
             continue
 
-        if dst.exists():
-            if file_hash(src) == file_hash(dst):
-                skipped.append(name)
-                continue
-
-        shutil.copy2(src, dst)
-        exported.append(name)
+        exported.append(src.name)
+        if not dry_run:
+            shutil.copy2(src, dst)
 
     return jsonify({
-        "exported": exported,
-        "skipped": skipped
+        "new": len(exported),
+        "skipped": len(skipped)
     })
