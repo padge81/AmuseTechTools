@@ -11,7 +11,7 @@ def write_edid_for_connector(
     sleep: float = 0.01,
     force: bool = False,
 ):
-    bus = resolve_connector_i2c(connector)
+    bus = is_connector_connected(connector)
 
     if not force and not validate_edid(edid):
         raise EDIDWriteError("Invalid EDID supplied")
