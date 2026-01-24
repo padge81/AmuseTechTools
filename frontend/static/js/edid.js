@@ -250,6 +250,35 @@ function saveEdid() {
 // ==============================
 // USB IMPORT EXPORT
 // ==============================
+//Load USB Drives
+function loadUsbDrives() {
+    const sel = getEl("usbDrive");
+    const status = getEl("usbStatus");
+    if (!sel || !status) return;
+
+    fetch("/usb/drives")
+        .then(r => r.json())
+        .then(drives => {
+            sel.innerHTML = "";
+
+            if (!drives.length) {
+                status.innerText = "No USB drives found";
+                return;
+            }
+
+            drives.forEach(d => {
+                const opt = document.createElement("option");
+                opt.value = d;
+                opt.text = d;
+                sel.appendChild(opt);
+            });
+
+            status.innerText = "USB ready";
+        })
+        .catch(() => {
+            status.innerText = "USB scan failed";
+        });
+}
 
 //Scan USB Drives
 function scanUsb() {
