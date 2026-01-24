@@ -24,7 +24,8 @@ def write_edid_i2c(
         raise EDIDWriteError("EDID too short")
 
     try:
-        with SMBus(bus) as smb:
+        smb = SMBus(bus)          # ← OPEN BUS HERE
+        try:
             # Presence check
             smb.read_byte(EDID_I2C_ADDR)
 
@@ -32,12 +33,23 @@ def write_edid_i2c(
                 smb.write_byte_data(EDID_I2C_ADDR, i, byte)
                 time.sleep(sleep)
 
+        finally:
+            smb.close()           # ← CLOSE BUS **HERE** (ALWAYS)
+
         if verify:
-            result = read_edid_i2c(bus=bus, length=128, strict=False)
+            result = read_edid_i2c(
+                bus=bus,
+                length=128,
+                strict=False
+            )
             if diff_edid(edid[:128], result["edid"]):
                 raise EDIDWriteError("Verification failed")
 
-        return {"bus": bus, "bytes_written": 128}
+        return {
+            "bus": bus,
+            "bytes_written": 128
+        }
 
     except Exception as e:
         raise EDIDWriteError(str(e))
+
