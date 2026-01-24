@@ -382,4 +382,5 @@ function exportEdids() {
 // ==============================
 document.addEventListener("DOMContentLoaded", () => {
     loadConnectors();
+	loadUsbDrives();
 });
