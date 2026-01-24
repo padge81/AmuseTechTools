@@ -6,7 +6,7 @@ from backend.core.edid.write_i2c import write_edid_for_connector
 from backend.core.edid.checksum import validate_edid
 from backend.core.edid.exceptions import EDIDWriteError
 
-EDID_FILE = Path("edid_files/ff.bin")
+EDID_FILE = Path("edid_files/HDMI_EDID_Emulator.bin")
 
 
 def main():
