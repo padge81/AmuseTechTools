@@ -3,64 +3,123 @@
 
 <div class="page">
 
+    <!-- ============================= -->
+    <!-- Top navigation -->
+    <!-- ============================= -->
     <div class="top-bar">
         <button onclick="location.href='/'">Home</button>
     </div>
 
     <h1>EDID Tools</h1>
 
+    <!-- ============================= -->
+    <!-- EDID Controls -->
+    <!-- ============================= -->
     <div class="controls">
-        <label for="port">Port:</label>
-        <select id="port" name="port">
-            <!-- options populated by JS -->
-        </select>
 
-        <button onclick="loadConnectors(true)">↻ Refresh Ports</button>
-        <button onclick="readEdid()">Read EDID</button>
-        <button onclick="resetView()">Reset</button>
+        <div class="control-group">
+            <label for="port">Port:</label>
+            <select id="port" name="port">
+                <!-- populated by JS -->
+            </select>
+
+            <button onclick="loadConnectors(true)">↻ Refresh Ports</button>
+        </div>
+
+        <div class="control-group">
+            <button onclick="readEdid()">Read EDID</button>
+            <button onclick="resetView()">Reset</button>
+        </div>
+
     </div>
 
-    <!-- Status + match -->
-    <div class="status" id="status">Idle</div>
+    <!-- ============================= -->
+    <!-- Status / Match -->
+    <!-- ============================= -->
+    <div id="status" class="status">Idle</div>
     <div id="match" class="match"></div>
 
-    <!-- Output -->
+    <!-- ============================= -->
+    <!-- EDID Output -->
+    <!-- ============================= -->
     <pre id="output" class="output"></pre>
 
-    <!-- View toggle -->
+    <!-- ============================= -->
+    <!-- View Mode Toggle -->
+    <!-- ============================= -->
     <div class="toggle">
-        <label for="view-binary">
-            <input id="view-binary" type="radio" name="viewMode" value="binary" checked onchange="switchView()">
+        <label>
+            <input
+                type="radio"
+                name="viewMode"
+                value="binary"
+                checked
+                onchange="switchView()"
+            >
             Binary
         </label>
 
-        <label for="view-decoded">
-            <input id="view-decoded" type="radio" name="viewMode" value="decoded" onchange="switchView()">
+        <label>
+            <input
+                type="radio"
+                name="viewMode"
+                value="decoded"
+                onchange="switchView()"
+            >
             Decoded
         </label>
     </div>
 
-	<div class="save">
-		<input id="saveFilename" type="text" placeholder="filename.bin">
-		<button id="saveBtn" onclick="saveEdid()" disabled>Save EDID</button>
-	</div>
+    <!-- ============================= -->
+    <!-- Save EDID -->
+    <!-- ============================= -->
+    <div class="save">
+        <label for="saveFilename">Save as:</label>
+        <input
+            id="saveFilename"
+            type="text"
+            placeholder="filename.bin"
+        >
+        <button
+            id="saveBtn"
+            onclick="saveEdid()"
+            disabled
+        >
+            Save EDID
+        </button>
+    </div>
 
-	<div class="usb-section">
-		<h3>USB Import / Export</h3>
+    <!-- ============================= -->
+    <!-- USB Import / Export -->
+    <!-- ============================= -->
+    <div class="usb-section">
 
-		<select id="usbDrive"></select>
-		<button onclick="loadUsbDrives()">↻ Refresh USB</button>
+        <h3>USB Import / Export</h3>
 
-		<button onclick="importEdids()">Import from USB</button>
-		<button onclick="exportEdids()">Export to USB</button>
+        <div class="usb-controls">
+            <label for="usbDrive">USB Drive:</label>
+            <select id="usbDrive"></select>
 
-		<div id="usbStatus"></div>
-	</div>
-	
+            <button onclick="loadUsbDrives()">↻ Refresh USB</button>
+        </div>
+
+        <div class="usb-actions">
+            <button onclick="importEdids()">Import from USB</button>
+            <button onclick="exportEdids()">Export to USB</button>
+        </div>
+
+        <div id="usbStatus" class="status">Idle</div>
+
+        <!-- Optional: future file list goes here -->
+        <!-- <div id="usbFiles"></div> -->
+
+    </div>
+
 </div>
 
-<!-- Script last -->
+<!-- ============================= -->
+<!-- Scripts -->
+<!-- ============================= -->
 <script src="{{ url_for('static', filename='js/edid.js') }}"></script>
 
 {% endblock %}
-

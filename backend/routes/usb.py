@@ -1,136 +1,78 @@
-from flask import Blueprint, jsonify, request
-from pathlib import Path
+@app.route("/usb/status")
+def usb_status():
+    mounts = list_usb_mounts()
+    result = []
+    for m in mounts:
+        result.append({
+            "path": m,
+            "name": os.path.basename(m),
+            "read_only": is_read_only(m)
+        })
+    return jsonify(result)
 
-# -------------------------------------------------
-# Configuration
-# -------------------------------------------------
+@app.route("/usb/scan")
+def usb_scan():
+    mount = request.args.get("mount")
+    if not mount or not os.path.isdir(mount):
+        return jsonify({"error": "Invalid mount"}), 400
 
-USB_MOUNT_BASES = ["/media", "/mnt"]
+    usb_bins = [
+        f for f in os.listdir(mount)
+        if f.lower().endswith(".bin")
+        and os.path.isfile(os.path.join(mount, f))
+    ]
 
-# EDID storage directory (same one used elsewhere)
-EDID_DIR = Path("edid_files")
+    local_hashes = {
+        f: file_hash(os.path.join(SAVE_DIR, f))
+        for f in os.listdir(SAVE_DIR)
+        if f.lower().endswith(".bin")
+    }
 
-bp = Blueprint("usb", __name__, url_prefix="/usb")
+    files = []
+    for f in usb_bins:
+        usb_path = os.path.join(mount, f)
+        usb_hash = file_hash(usb_path)
+        exists = usb_hash in local_hashes.values()
 
+        files.append({
+            "name": f,
+            "exists": exists
+        })
 
-# -------------------------------------------------
-# LIST USB DRIVES
-# -------------------------------------------------
+    return jsonify(files)
 
-@bp.route("/drives")
-def list_drives():
-    drives = []
-
-    for base in USB_MOUNT_BASES:
-        base_path = Path(base)
-        if not base_path.exists():
-            continue
-
-        for mount in base_path.iterdir():
-            if mount.is_dir():
-                drives.append(str(mount))
-
-    return jsonify(drives)
-
-# -------------------------------------------------
-# IMPORT EDIDS FROM USB
-# -------------------------------------------------
-
-@bp.route("/import", methods=["POST"])
-def import_edids():
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "No request data"}), 400
-
-    drive = Path(data.get("drive", ""))
-
-    if not drive.exists() or not drive.is_dir():
-        return jsonify({"error": "Drive not found"}), 400
-
-    if not EDID_DIR.exists():
-        EDID_DIR.mkdir(parents=True, exist_ok=True)
+@app.route("/usb/import", methods=["POST"])
+def usb_import():
+    data = request.json
+    mount = data.get("mount")
+    files = data.get("files", [])
 
     imported = []
-    skipped = []
 
-    # Cache local EDIDs for fast comparison
-    local_edids = []
-    for file in EDID_DIR.rglob("*.bin"):
-        try:
-            local_edids.append(file.read_bytes())
-        except OSError:
-            pass
+    for f in files:
+        src = os.path.join(mount, f)
+        dst = os.path.join(SAVE_DIR, f)
 
-    # Scan USB for .bin files
-    for usb_file in drive.glob("*.bin"):
-        try:
-            usb_edid = usb_file.read_bytes()
-        except OSError:
-            skipped.append(usb_file.name)
-            continue
+        if not os.path.exists(dst):
+            shutil.copy2(src, dst)
+            imported.append(f)
 
-        # Exact byte-for-byte comparison
-        if usb_edid in local_edids:
-            skipped.append(usb_file.name)
-            continue
+    return jsonify({"imported": imported})
 
-        target = EDID_DIR / usb_file.name
-
-        # Avoid overwrite even if name matches but content differs
-        if target.exists():
-            skipped.append(usb_file.name)
-            continue
-
-        target.write_bytes(usb_edid)
-        imported.append(usb_file.name)
-
-    return jsonify({
-        "imported": imported,
-        "skipped": skipped
-    })
-
-# -------------------------------------------------
-# EXPORT EDIDS TO USB
-# -------------------------------------------------
-
-@bp.route("/export", methods=["POST"])
-def export_edids():
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "No request data"}), 400
-
-    drive = Path(data.get("drive", ""))
-
-    if not drive.exists() or not drive.is_dir():
-        return jsonify({"error": "Drive not found"}), 400
-
-    if not EDID_DIR.exists():
-        return jsonify({"error": "Local EDID directory not found"}), 500
+@app.route("/usb/export", methods=["POST"])
+def usb_export():
+    data = request.json
+    mount = data.get("mount")
+    files = data.get("files", [])
 
     exported = []
-    skipped = []
 
-    for file in EDID_DIR.glob("*.bin"):
-        try:
-            edid = file.read_bytes()
-        except OSError:
-            continue
+    for f in files:
+        src = os.path.join(SAVE_DIR, f)
+        dst = os.path.join(mount, f)
 
-        target = drive / file.name
+        if os.path.exists(src) and not os.path.exists(dst):
+            shutil.copy2(src, dst)
+            exported.append(f)
 
-        if target.exists():
-            try:
-                if target.read_bytes() == edid:
-                    skipped.append(file.name)
-                    continue
-            except OSError:
-                skipped.append(file.name)
-                continue
-
-        target.write_bytes(edid)
-        exported.append(file.name)
-
-    return jsonify({
-        "exported": exported,
-        "skipped": skipped
-    })
+    return jsonify({"exported": exported})
