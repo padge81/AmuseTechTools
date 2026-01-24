@@ -1,34 +1,43 @@
-def write_edid_i2c(
-    edid: bytes,
-    bus: int,
-    verify: bool = True,
-    sleep: float = 0.01,
-    force: bool = False,
-):
-    if bus is None:
-        raise EDIDWriteError("Explicit I2C bus required")
+from pathlib import Path
+from backend.core.edid.exceptions import EDIDWriteError
 
-    if not force and not validate_edid(edid):
-        raise EDIDWriteError("Invalid EDID supplied")
+SYS_DRM = Path("/sys/class/drm")
+DEV_I2C = Path("/dev")
 
-    if len(edid) < 128:
-        raise EDIDWriteError("EDID too short")
 
-    try:
-        with SMBus(bus) as smb:
-            # Presence check
-            smb.read_byte(EDID_I2C_ADDR)
+def resolve_connector_i2c(connector: str) -> int:
+    """
+    Resolve DRM connector (e.g. HDMI-A-1) to its DDC I2C bus number.
+    """
 
-            for i, byte in enumerate(edid[:128]):
-                smb.write_byte_data(EDID_I2C_ADDR, i, byte)
-                time.sleep(sleep)
+    if not connector:
+        raise EDIDWriteError("No DRM connector specified")
 
-        if verify:
-            result = read_edid_i2c(bus=bus, length=128, strict=False)
-            if diff_edid(edid[:128], result["edid"]):
-                raise EDIDWriteError("Verification failed")
+    matches = list(SYS_DRM.glob(f"*-{connector}"))
 
-        return {"bus": bus, "bytes_written": 128}
+    if not matches:
+        raise EDIDWriteError(f"DRM connector '{connector}' not found")
 
-    except Exception as e:
-        raise EDIDWriteError(str(e))
+    if len(matches) > 1:
+        raise EDIDWriteError(f"Ambiguous DRM connector '{connector}'")
+
+    drm_path = matches[0]
+    ddc_path = drm_path / "ddc"
+
+    if not ddc_path.exists():
+        raise EDIDWriteError(f"No DDC directory for {connector}")
+
+    i2c_dirs = list(ddc_path.glob("i2c-*"))
+
+    if not i2c_dirs:
+        raise EDIDWriteError(f"No I2C bus found for {connector}")
+
+    if len(i2c_dirs) > 1:
+        raise EDIDWriteError(f"Multiple I2C buses found for {connector}")
+
+    bus = int(i2c_dirs[0].name.split("-")[1])
+
+    if not (DEV_I2C / f"i2c-{bus}").exists():
+        raise EDIDWriteError(f"/dev/i2c-{bus} does not exist")
+
+    return bus
