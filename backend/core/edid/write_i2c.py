@@ -1,5 +1,5 @@
 from .drm import is_connector_connected
-from .i2c import find_ddc_i2c_buses, SMBus
+from .i2c import find_ddc_i2c_buses, SMBus, EDID_I2C_ADDR
 from .exceptions import EDIDWriteError
 from .write import write_edid_i2c
 
