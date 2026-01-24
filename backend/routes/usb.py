@@ -23,14 +23,26 @@ def file_hash(path: Path) -> str:
 
 def list_usb_mounts():
     mounts = []
+
     for base in USB_MOUNT_BASES:
         base_path = Path(base)
         if not base_path.exists():
             continue
-        for p in base_path.iterdir():
-            if p.is_dir():
-                mounts.append(str(p))
-    return mounts
+
+        for user_dir in base_path.iterdir():
+            if not user_dir.is_dir():
+                continue
+
+            # If this dir itself is a mount, include it
+            mounts.append(str(user_dir))
+
+            # Also scan one level deeper (common auto-mount layout)
+            for p in user_dir.iterdir():
+                if p.is_dir():
+                    mounts.append(str(p))
+
+    # Remove duplicates + non-mounted paths
+    return sorted(set(mounts))
 
 
 # ----------------------------
