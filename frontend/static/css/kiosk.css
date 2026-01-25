@@ -41,15 +41,14 @@ body {
 }
 /* Nav Buttons */
 .top-nav {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
+}
 
-    height: 60px;
-    padding: 0 16px;
-
-    /*background: #111; */       /* or match your theme */
-    border-bottom: 1px solid #333;
+.page-title {
+    text-align: center;
+    margin: 0;
 }
 
 .nav-btn {
