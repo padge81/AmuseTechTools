@@ -35,3 +35,11 @@ def write_edid_for_connector(
             continue
 
     raise EDIDWriteError(f"All DDC buses failed: {last_error}")
+    
+    return {
+    "connector": connector,
+    "bus": bus,
+    "bytes_written": 128,
+    "verified": verify,
+    "forced": force,
+    }

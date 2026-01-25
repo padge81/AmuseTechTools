@@ -445,18 +445,24 @@ function writeEdid() {
         })
     })
     .then(r => r.json())
-    .then(res => {
-        if (res.error) {
-            alert(res.error);
-            return;
-        }
+	.then(res => {
+		if (res.error) {
+			alert(res.error);
+			return;
+		}
 
-        alert(
-            `EDID written successfully!\n\n` +
-            `Connector: ${res.connector}\n` +
-            `I2C bus: ${res.bus}`
-        );
-    });
+		const msg =
+			"EDID written successfully!\n\n" +
+			`Connector: ${res.connector}\n` +
+			`I2C bus: ${res.bus}\n` +
+			`Verified: ${res.verified ? "Yes" : "No"}\n\n` +
+			"Read EDID back from the device now?";
+
+		if (confirm(msg)) {
+			// Trigger a fresh EDID read
+			readEdid();
+		}
+	});
 }
 
 
