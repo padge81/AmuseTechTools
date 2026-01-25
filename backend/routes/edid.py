@@ -5,6 +5,8 @@ import os
 from backend.core.edid.read import read_edid_drm
 from backend.core.edid.compare import find_matching_edid
 from backend.core.edid.decode import decode_basic, edid_to_hex
+from backend.core.edid.write_i2c import write_edid_for_connector
+from backend.core.edid.exceptions import EDIDWriteError
 
 bp = Blueprint("edid", __name__, url_prefix="/edid")
 
