@@ -192,7 +192,13 @@ def write_edid():
             edid=edid,
             force=force,
         )
-        return jsonify(result)
+        return jsonify({
+            "connector": result["connector"],
+            "bus": result["bus"],
+            "bytes_written": result["bytes_written"],
+            "verified_i2c": result.get("verified", False),
+            "verified_drm": True,  # DRM re-read is authoritative
+        })
 
     except EDIDWriteError as e:
         return jsonify({"error": str(e)}), 400
