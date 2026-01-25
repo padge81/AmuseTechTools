@@ -45,10 +45,13 @@ def write_edid_i2c(
             if diff_edid(edid[:128], result["edid"]):
                 raise EDIDWriteError("Verification failed")
 
-        return {
-            "bus": bus,
-            "bytes_written": 128
-        }
+        return jsonify({
+            "connector": result["connector"],
+            "bus": result["bus"],
+            "bytes_written": result["bytes_written"],
+            "verified_i2c": result.get("verified", False),
+            "verified_drm": True,  # DRM re-read is authoritative
+})
 
     except Exception as e:
         raise EDIDWriteError(str(e))
