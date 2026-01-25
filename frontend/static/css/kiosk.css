@@ -63,7 +63,7 @@ body {
 /* Divider */
 .divider {
     display: block;
-    margin: 20px auto;
+    margin: 10px auto;
     max-width: 90%;   /* prevents edge-to-edge on small screens */
 }
 
