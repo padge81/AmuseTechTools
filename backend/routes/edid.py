@@ -152,12 +152,11 @@ def decode_edid():
 
 # ----------------------------------------------------
 # List Saved EDID Files
-# ----------------------------------------------------
-       
-@app.route("/edid/files")
+# ----------------------------------------------------      
+@bp.route("/files")
 def list_edid_files():
     files = sorted(
-        f.name for f in EDID_FILES_DIR.glob("*.bin")
+        f.name for f in EDID_DIR.glob("*.bin")
     )
     return jsonify(files)
     
@@ -165,21 +164,20 @@ def list_edid_files():
 # ----------------------------------------------------
 # Write EDID to Connector (i2c)
 # ----------------------------------------------------
-
-@app.route("/edid/write", methods=["POST"])
+@bp.route("/write", methods=["POST"])
 def write_edid():
-    data = request.json or {}
+    data = request.get_json() or {}
 
     connector = data.get("connector")
     filename = data.get("filename")
     force = bool(data.get("force", False))
 
     if not connector or not filename:
-        return jsonify(error="Missing connector or filename"), 400
+        return jsonify({"error": "Missing connector or filename"}), 400
 
-    path = EDID_FILES_DIR / filename
+    path = EDID_DIR / filename
     if not path.exists():
-        return jsonify(error="EDID file not found"), 404
+        return jsonify({"error": "EDID file not found"}), 404
 
     edid = path.read_bytes()
 
@@ -192,4 +190,4 @@ def write_edid():
         return jsonify(result)
 
     except EDIDWriteError as e:
-        return jsonify(error=str(e)), 400
+        return jsonify({"error": str(e)}), 400
