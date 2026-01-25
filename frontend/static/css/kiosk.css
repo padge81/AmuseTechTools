@@ -48,7 +48,7 @@ body {
     height: 60px;
     padding: 0 16px;
 
-    background: #111;        /* or match your theme */
+    /*background: #111; */       /* or match your theme */
     border-bottom: 1px solid #333;
 }
 
