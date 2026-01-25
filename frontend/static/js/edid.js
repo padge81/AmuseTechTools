@@ -452,12 +452,11 @@ function writeEdid() {
 		}
 
 		const msg =
-			`EDID written successfully!\n\n` +
+			"EDID written successfully!\n\n" +
 			`Connector: ${res.connector}\n` +
-			`I2C bus: ${res.bus}\n\n` +
+			`I2C bus: ${res.bus}\n` +
 			`Verified (I2C): ${res.verified_i2c ? "Yes" : "No"}\n` +
 			`Verified (DRM): ${res.verified_drm ? "Yes" : "No"}`
-			"Read EDID back from the device now?";
 
 		if (confirm(msg)) {
 			// Trigger a fresh EDID read
