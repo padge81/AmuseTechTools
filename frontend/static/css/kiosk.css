@@ -59,7 +59,7 @@ body {
     transition: opacity 0.15s ease, transform 0.1s ease;
 }
 
-.nav-btn:hover {
+/*.nav-btn:hover {
     opacity: 1;
     transform: scale(1.05);
 }
@@ -70,7 +70,7 @@ body {
 
 #btn-home {
     right: 12px;
-}
+}*/
 
 /* Menu buttons */
 .menu {
