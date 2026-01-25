@@ -174,8 +174,11 @@ def write_edid():
     filename = data.get("filename")
     force = bool(data.get("force", False))
 
-    if not connector or not filename:
-        return jsonify({"error": "Missing connector or filename"}), 400
+    if isinstance(connector, dict):
+        connector = connector.get("name")
+
+    if not connector or not isinstance(connector, str):
+        return jsonify(error="Invalid connector"), 400
 
     path = EDID_DIR / filename
     if not path.exists():

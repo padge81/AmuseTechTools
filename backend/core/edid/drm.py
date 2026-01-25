@@ -1,6 +1,8 @@
 from pathlib import Path
 
-def is_connector_connected(connector: str) -> bool:
+def is_connector_connected(connector: str) -> int:
+    if not isinstance(connector, str):
+        raise ValueError("connector must be a string")
     """
     Check if DRM connector exists and is connected.
     """
