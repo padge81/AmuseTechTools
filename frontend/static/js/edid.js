@@ -465,15 +465,15 @@ function writeEdid() {
 	});
 }
 
-function navHome() {
+// Navigation buttons (global)
+window.navHome = function () {
     window.location.href = "/";
-}
+};
 
-function navBack() {
-    // For now: same behavior
+window.navBack = function () {
     window.history.back();
-    // Or: window.location.href = "/";
-}
+};
+
 
 // ==============================
 // Init
