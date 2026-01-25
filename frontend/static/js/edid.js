@@ -418,10 +418,18 @@ function updateWriteButton() {
 
 //Write Handler
 function writeEdid() {
+    const connector = document.getElementById("port").value;
+    const filename = document.getElementById("edidFile").value;
+
+    if (!connector || !filename) {
+        alert("Select a connector and EDID file first");
+        return;
+    }
+
     if (!confirm(
         "WARNING:\n\n" +
-        `Connector: ${selectedPort}\n` +
-        `EDID file: ${selectedFile}\n\n` +
+        `Connector: ${connector}\n` +
+        `EDID file: ${filename}\n\n` +
         "This will overwrite the EDID EEPROM.\n" +
         "A power cycle may be required to revert.\n\n" +
         "Proceed?"
@@ -431,8 +439,8 @@ function writeEdid() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            connector: selectedPort,
-            filename: selectedFile,
+            connector: connector,
+            filename: filename,
             force: true
         })
     })
@@ -442,6 +450,7 @@ function writeEdid() {
             alert(res.error);
             return;
         }
+
         alert(
             `EDID written successfully!\n\n` +
             `Connector: ${res.connector}\n` +
@@ -449,6 +458,7 @@ function writeEdid() {
         );
     });
 }
+
 
 // ==============================
 // Init
