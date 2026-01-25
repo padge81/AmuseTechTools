@@ -110,6 +110,22 @@
 		<div id="usbStatus" class="status"></div>
 	</div>
 
+    <!-- ============================= -->
+    <!-- USB Import / Export -->
+    <!-- ============================= -->
+	<div class="write-section">
+		<h3>Write EDID to Device</h3>
+
+		<label>Saved EDID file:</label>
+		<select id="edidFile" onchange="onFileSelect()">
+			<option value="">-- select EDID --</option>
+		</select>
+
+		<button id="writeBtn" onclick="writeEdid()" disabled>
+			⚠ Write EDID
+		</button>
+	</div>
+
 </div>
 
 <!-- ============================= -->
