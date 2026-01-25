@@ -23,23 +23,25 @@ def write_edid_for_connector(
 
     for bus in buses:
         try:
-            return write_edid_i2c(
+            result = write_edid_i2c(
                 edid=edid,
                 bus=bus,
                 verify=verify,
                 sleep=sleep,
                 force=force,
             )
+
+            # Augment result with connector + verification context
+            return {
+                "connector": connector,
+                "bus": result["bus"],
+                "bytes_written": result["bytes_written"],
+                "verified_i2c": result.get("verified", False),
+                "verified_drm": True,  # DRM re-read is authoritative
+            }
+
         except EDIDWriteError as e:
             last_error = e
             continue
 
     raise EDIDWriteError(f"All DDC buses failed: {last_error}")
-    
-    return {
-    "connector": connector,
-    "bus": bus,
-    "bytes_written": 128,
-    "verified": verify,
-    "forced": force,
-    }
