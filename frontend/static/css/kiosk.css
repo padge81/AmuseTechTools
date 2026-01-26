@@ -105,7 +105,7 @@ h3 {
 .toggle-pill {
     display: inline-flex;
     justify-content: flex-end;
-    border: 1px solid #0f0;
+    border: 1px solid #e0e0e0;
     border-radius: 999px;
     overflow: hidden;
     background: #000;
