@@ -111,6 +111,8 @@ h3 {
     background: #000;
     font-family: monospace;
 	margin-left: right;
+	letter-spacing: 0.08em;
+    font-size: 13px;
 }
 
 .toggle-pill input {
