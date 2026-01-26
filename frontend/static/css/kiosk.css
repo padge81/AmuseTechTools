@@ -114,7 +114,7 @@ h3 {
     overflow: hidden;
     background: #000;
     font-family: monospace;
-	margin-left: right;
+	margin-left: auto;
 	letter-spacing: 0.08em;
     font-size: 10px;
 }
