@@ -29,11 +29,11 @@ h3 {
     padding: 20px;
 }
 .output {
-	border: 1px solid #0f0;
+	border: 1px solid #000;
     background: #111;
     color: #0f0;
     padding: 12px;
-    height: 300px;
+    height: 200px;
     overflow-y: auto;
     font-family: monospace;
     font-size: 14px;
