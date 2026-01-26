@@ -110,7 +110,7 @@ h3 {
     overflow: hidden;
     background: #000;
     font-family: monospace;
-	margin-left: auto;
+	margin-left: right;
 }
 
 .toggle-pill input {
