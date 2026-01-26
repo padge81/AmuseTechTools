@@ -110,6 +110,7 @@ h3 {
     overflow: hidden;
     background: #000;
     font-family: monospace;
+	margin-left: auto;
 }
 
 .toggle-pill input {
@@ -119,13 +120,13 @@ h3 {
 .toggle-pill label {
     padding: 6px 14px;
     cursor: pointer;
-    color: #0f0;
+    color: #e0e0e0;
     transition: background 0.15s ease, color 0.15s ease;
     user-select: none;
 }
 
 .toggle-pill input:checked + label {
-    background: #0f0;
+    background: #e0e0e0;
     color: #000;
 }
 
