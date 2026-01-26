@@ -1,6 +1,6 @@
 from pathlib import Path
 
-def is_connector_connected(connector: str) -> int:
+def is_connector_connected(connector: str) -> bool:
     if not isinstance(connector, str):
         raise ValueError("connector must be a string")
     """
