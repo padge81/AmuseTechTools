@@ -11,6 +11,12 @@ body {
     background-size: cover;
     color: #fff;
 }
+/* Headers */
+h3 {
+    margin: 0 0 6px 0;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+}
 
 /* Main layout */
 .container {
@@ -84,6 +90,18 @@ body {
     color: #000;
     font-weight: bold;
 }
+/* Toggle */
+.toggle {
+    display: flex;
+    justify-content: flex-end;
+    gap: 20px;
+    margin-top: 6px;
+}
+.toggle label {
+    cursor: pointer;
+    user-select: none;
+}
+
 
 /* Bottom bar */
 .bottom-bar {
