@@ -102,6 +102,10 @@ h3 {
     font-weight: bold;
 }
 /* Toggle */
+.toggle-row {
+    display: flex;
+}
+
 .toggle-pill {
     display: inline-flex;
     justify-content: flex-end;
@@ -112,7 +116,7 @@ h3 {
     font-family: monospace;
 	margin-left: right;
 	letter-spacing: 0.08em;
-    font-size: 13px;
+    font-size: 10px;
 }
 
 .toggle-pill input {

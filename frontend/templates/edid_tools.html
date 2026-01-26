@@ -53,25 +53,27 @@
     <!-- ============================= -->
     <!-- View Mode Toggle -->
     <!-- ============================= -->
-	<div class="toggle-pill">
-		<input
-			type="radio"
-			id="viewBinary"
-			name="viewMode"
-			value="binary"
-			checked
-			onchange="switchView()"
-		>
-		<label for="viewBinary">Binary</label>
+	<div class="toggle-row">
+		<div class="toggle-pill">
+			<input
+				type="radio"
+				id="viewBinary"
+				name="viewMode"
+				value="binary"
+				checked
+				onchange="switchView()"
+			>
+			<label for="viewBinary">Binary</label>
 
-		<input
-			type="radio"
-			id="viewDecoded"
-			name="viewMode"
-			value="decoded"
-			onchange="switchView()"
-		>
-		<label for="viewDecoded">Decoded</label>
+			<input
+				type="radio"
+				id="viewDecoded"
+				name="viewMode"
+				value="decoded"
+				onchange="switchView()"
+			>
+			<label for="viewDecoded">Decoded</label>
+		</div>
 	</div>
 	
 <img src="/static/images/divider.png" class="divider">
