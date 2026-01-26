@@ -26,6 +26,7 @@ h3 {
     padding: 20px;
 }
 .output {
+	border: 1px solid #0f0;
     background: #111;
     color: #0f0;
     padding: 12px;
