@@ -22,6 +22,7 @@
     <div class="controls">
 
         <div class="control-group">
+			<h3>Select Port</h3>
             <label for="port">Port:</label>
             <select id="port" name="port">
                 <!-- populated by JS -->
@@ -33,6 +34,7 @@
 <img src="/static/images/divider.png" class="divider">
 
         <div class="control-group">
+			<h3>Read from Device</h3>
             <button onclick="readEdid()">Read EDID</button>
             <button onclick="resetView()">↻</button>
         </div>
@@ -82,6 +84,7 @@
     <!-- Save EDID -->
     <!-- ============================= -->
     <div class="save">
+		<h3>Save to File</h3>
         <label for="saveFilename">Save as:</label>
         <input
             id="saveFilename"
@@ -107,7 +110,7 @@
 
 		<div class="usb-controls">
 			<select id="usbDrive"></select>
-			<button onclick="loadUsbDrives()">↻ Refresh USB</button>
+			<button onclick="loadUsbDrives()">↻</button>
 		</div>
 
 		<div id="usbFiles" class="usb-files"></div>
