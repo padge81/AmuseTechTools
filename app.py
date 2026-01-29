@@ -1,8 +1,10 @@
 from flask import Flask, render_template
+from threading import Thread
+import os
 
 from backend.routes import system, edid, usb
 from backend.core.system.version import get_version
-
+from backend.core.pattern.worker import pattern_worker
 
 def create_app():
     app = Flask(
@@ -40,7 +42,11 @@ def create_app():
 
     return app
 
-
 if __name__ == "__main__":
     app = create_app()
+    
+        # 🔐 Start worker ONCE (avoid Flask reloader duplication)
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+        Thread(target=pattern_worker, daemon=True).start()
+ 
     app.run(host="0.0.0.0", port=8080, debug=True)
