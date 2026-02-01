@@ -16,10 +16,12 @@ def is_connector_connected(connector: str) -> bool:
 
     return False
     
+from pathlib import Path
+
 def list_connectors():
     """
     Enumerate DRM connectors from /sys/class/drm.
-    Returns a list of dicts with basic connector info.
+    Returns connector info including EDID presence and path.
     """
     connectors = []
     drm = Path("/sys/class/drm")
@@ -32,10 +34,15 @@ def list_connectors():
         name = card.name.split("-", 1)[1]  # HDMI-A-1
         status = status_file.read_text().strip()
 
+        edid_file = card / "edid"
+        edid_present = edid_file.exists() and edid_file.stat().st_size > 0
+
         connectors.append({
             "name": name,
             "connected": status == "connected",
             "sysfs_path": str(card),
+            "edid_present": edid_present,
+            "edid_path": str(edid_file) if edid_present else None,
         })
 
-    return connectors
+    return sorted(connectors, key=lambda c: c["name"])

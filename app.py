@@ -2,7 +2,7 @@ from flask import Flask, render_template
 from threading import Thread
 import os
 
-from backend.routes import system, edid, usb
+from backend.routes import system, edid, usb, pattern
 from backend.core.system.version import get_version
 from backend.core.pattern.worker import pattern_worker
 
@@ -17,6 +17,7 @@ def create_app():
     app.register_blueprint(system.bp)
     app.register_blueprint(edid.bp)
     app.register_blueprint(usb.bp)
+    app.register_blueprint(pattern.bp)
   
 
     # Main menu
