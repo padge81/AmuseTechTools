@@ -2,12 +2,14 @@ import time
 from backend.core.pattern.state import get_state
 from backend.core.pattern.output import output_solid_color
 
+_active_output = None
+_active_color = None
+
 def pattern_worker():
-    """
-    Long-running worker loop.
-    Eventually owns DRM, framebuffer, vsync.
-    """
+    global _active_output, _active_color
+
     print("Pattern worker started")
+
     while True:
         state = get_state()
 
@@ -15,17 +17,13 @@ def pattern_worker():
             time.sleep(0.1)
             continue
 
-        if state["mode"] == "solid":
-            render_solid_color(state["value"])
+        # Only reconfigure if something changed
+        if (
+            state["mode"] == "solid" and
+            (state["output"] != _active_output or state["value"] != _active_color)
+        ):
+            output_solid_color(state["output"], state["value"])
+            _active_output = state["output"]
+            _active_color = state["value"]
 
-        elif state["mode"] == "pattern":
-            render_test_pattern(state["value"])
-
-        elif state["mode"] == "saver":
-            render_screen_saver()
-
-        time.sleep(0.016)  # ~60Hz placeholder
-        
-def render_solid_color(color):
-    state = get_state()
-    output_solid_color(state["output"], color)
+        time.sleep(0.05)
