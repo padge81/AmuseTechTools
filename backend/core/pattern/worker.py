@@ -1,5 +1,5 @@
 import time
-from pattern.state import get_state
+from backend.core.pattern.state import get_state
 from backend.core.pattern.output import output_solid_color
 
 def pattern_worker():
