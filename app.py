@@ -29,7 +29,7 @@ def create_app():
     def edid_tools():
         return render_template("edid_tools.html")
 
-    @app.route("/pattern-generator")
+    @app.route("/pattern")
     def pattern_generator():
         return render_template("pattern_generator.html")
 

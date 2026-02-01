@@ -1,5 +1,99 @@
-{% extends "base.html" %}
-{% block content %}
-<a href="/" class="home">Home</a>
-<img src="/static/img/under_construction.png">
-{% endblock %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pattern Generator (Test)</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background: #111;
+            color: #eee;
+        }
+        select, button {
+            font-size: 16px;
+            padding: 6px;
+            margin: 5px 0;
+        }
+        #status {
+            margin-top: 20px;
+            background: #222;
+            padding: 10px;
+            white-space: pre;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Pattern Generator (Test)</h1>
+
+<label>Output:</label><br>
+<select id="output"></select><br>
+
+<label>Solid Color:</label><br>
+<select id="color">
+    <option value="red">Red</option>
+    <option value="green">Green</option>
+    <option value="blue">Blue</option>
+    <option value="white">White</option>
+    <option value="black">Black</option>
+</select><br>
+
+<button onclick="apply()">Apply</button>
+<button onclick="stop()">Stop</button>
+
+<div id="status">Status: (loading)</div>
+
+<script>
+async function loadOutputs() {
+    const res = await fetch("/api/pattern/outputs");
+    const outputs = await res.json();
+
+    const sel = document.getElementById("output");
+    sel.innerHTML = "";
+
+    outputs.forEach(o => {
+        if (o.connected) {
+            const opt = document.createElement("option");
+            opt.value = o.name;
+            opt.textContent = o.name;
+            sel.appendChild(opt);
+        }
+    });
+}
+
+async function apply() {
+    const output = document.getElementById("output").value;
+    const color = document.getElementById("color").value;
+
+    await fetch("/api/pattern/solid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            output: output,
+            color: color
+        })
+    });
+
+    updateStatus();
+}
+
+async function stop() {
+    await fetch("/api/pattern/stop", { method: "POST" });
+    updateStatus();
+}
+
+async function updateStatus() {
+    const res = await fetch("/api/pattern/status");
+    const status = await res.json();
+    document.getElementById("status").textContent =
+        "Status:\n" + JSON.stringify(status, null, 2);
+}
+
+loadOutputs();
+updateStatus();
+setInterval(updateStatus, 1000);
+</script>
+
+</body>
+</html>

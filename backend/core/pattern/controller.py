@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from pattern.state import set_state, get_state
+from backend.core.pattern.state import set_state, get_state
 from backend.core.edid.drm import list_connectors
 
 bp = Blueprint("pattern", __name__, url_prefix="/api/pattern")
