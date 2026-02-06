@@ -11,13 +11,18 @@ def open_card():
 # Find Connector By Name
 #--------------------------------------- 
 def find_connector(card, name):
-    res = pykms.ResourceManager(card)
+    # DRM connector IDs are small integers
+    for conn_id in range(0, 32):
+        try:
+            conn = pykms.Connector(card, conn_id)
+        except Exception:
+            continue
 
-    for conn_id in res.connector_ids:
-        conn = pykms.Connector(card, conn_id)
-
-        if conn.fullname == name and conn.connected():
-            return conn
+        try:
+            if conn.fullname == name and conn.connected():
+                return conn
+        except Exception:
+            continue
 
     raise RuntimeError(f"Connector {name} not found or not connected")
 
@@ -74,11 +79,14 @@ def fill_color(mm, width, height, color):
 # Modeset (this makes it visible)
 #---------------------------------------
 def modeset(card, connector, mode, fb):
-    res = pykms.ResourceManager(card)
-
+    # Find a working encoder
     enc = None
-    for enc_id in res.encoder_ids:
-        e = pykms.Encoder(card, enc_id)
+    for enc_id in range(0, 8):
+        try:
+            e = pykms.Encoder(card, enc_id)
+        except Exception:
+            continue
+
         if e.id in connector.encoders:
             enc = e
             break
