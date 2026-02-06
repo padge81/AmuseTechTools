@@ -20,9 +20,10 @@ def find_connector(card, requested_name):
 # Pick a Mode
 #---------------------------------------
 def pick_mode(connector):
-    if not connector.modes:
+    modes = connector.get_modes()
+    if not modes:
         raise RuntimeError("No display modes available")
-    return connector.modes[0]  # preferred mode
+    return modes[0]  # preferred / first mode
     
 #---------------------------------------
 # Create framebuffer + mmap
