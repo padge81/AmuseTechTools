@@ -52,10 +52,14 @@ def fill_color(mm, width, height, color):
         "white": (255, 255, 255),
     }
 
+    if color not in colors:
+        raise ValueError(f"Unknown color: {color}")
+
     r, g, b = colors[color]
     pixel = bytes([b, g, r, 0])  # XRGB8888
 
-    mm[:] = pixel * (width * height)
+    mv = mm.cast("B")            # 🔥 flatten memoryview
+    mv[:] = pixel * (width * height)
     
 #---------------------------------------
 # Modeset (this makes it visible)
