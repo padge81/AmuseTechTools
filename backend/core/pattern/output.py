@@ -40,7 +40,7 @@ def create_fb(card, mode):
     )
 
     mm = mmap.mmap(
-        buf.fd,
+        buf.fd(),
         size,
         mmap.MAP_SHARED,
         mmap.PROT_WRITE | mmap.PROT_READ
