@@ -11,9 +11,9 @@ def open_card():
 # Find Connector By Name
 #--------------------------------------- 
 def find_connector(card, name):
-    res = pykms.ResourceManager(card)
+    res = card.get_resources()
 
-    for conn in res.connectors():
+    for conn in res.connectors:
         if conn.fullname == name and conn.connected():
             return conn
 
