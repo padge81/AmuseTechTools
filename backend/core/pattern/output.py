@@ -10,8 +10,12 @@ def open_card():
 #---------------------------------------
 # Find Connector By Name
 #--------------------------------------- 
-def find_connector(card, name):
-    # DRM connector IDs are small integers
+def normalize(name: str) -> str:
+    return name.replace("card0-", "").lower()
+
+def find_connector(card, requested_name):
+    req = normalize(requested_name)
+
     for conn_id in range(0, 32):
         try:
             conn = pykms.Connector(card, conn_id)
@@ -19,12 +23,14 @@ def find_connector(card, name):
             continue
 
         try:
-            if conn.fullname == name and conn.connected():
+            full = normalize(conn.fullname)
+            if req in full and conn.connected():
+                print(f"[DRM] Matched connector: {conn.fullname}")
                 return conn
         except Exception:
             continue
 
-    raise RuntimeError(f"Connector {name} not found or not connected")
+    raise RuntimeError(f"Connector {requested_name} not found or not connected")
 
 #---------------------------------------
 # Pick a Mode
