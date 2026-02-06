@@ -53,12 +53,14 @@ def fill_color(mm, width, height, color):
     }
 
     r, g, b = colors[color]
-    pixel = bytes([b, g, r, 0])
+    pixel = bytes([b, g, r, 0])  # XRGB8888
 
+    buf = mm.cast("B")          # 👈 flatten to 1D
     stride = width * 4
+
     for y in range(height):
         start = y * stride
-        mm[start:start + stride] = pixel * width
+        buf[start:start + stride] = pixel * width
 
     
 #---------------------------------------
