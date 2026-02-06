@@ -72,7 +72,7 @@ def modeset(card, connector, mode, fb):
         raise RuntimeError("Failed to reserve CRTC")
 
     req = pykms.AtomicReq(card)
-    req.add_connector(connector, crtc, fb)
+    req.add_connector(connector, crtc)
     req.add_crtc(crtc, fb, mode)
     req.commit_sync()
         
