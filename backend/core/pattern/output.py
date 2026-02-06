@@ -36,10 +36,10 @@ def create_fb(card, mode):
         pykms.PixelFormat.XRGB8888
     )
 
-    mm = fb.map(fb.size())  # ← CALL the method
+    offset = fb.offset(0)   # plane 0
+    mm = fb.map(offset)     # mmap framebuffer
 
     return fb, mm
-    
 #---------------------------------------
 # Fill Framebuffer with solid colour
 #---------------------------------------
