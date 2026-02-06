@@ -36,7 +36,7 @@ def create_fb(card, mode):
         pykms.PixelFormat.XRGB8888
     )
 
-    mm = fb.map()   # ← THIS is the correct buffer access
+    mm = fb.map(0)   # 👈 REQUIRED offset
 
     return fb, mm
     
@@ -53,10 +53,9 @@ def fill_color(mm, width, height, color):
     }
 
     r, g, b = colors[color]
-    pixel = bytes([b, g, r, 0])  # XRGB
+    pixel = bytes([b, g, r, 0])  # XRGB8888
 
-   # mm.seek(0)
-    mm.write(pixel * (width * height))
+    mm[:] = pixel * (width * height)
     
 #---------------------------------------
 # Modeset (this makes it visible)
