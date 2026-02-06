@@ -65,7 +65,11 @@ def fill_color(mm, width, height, color):
 # Modeset (this makes it visible)
 #---------------------------------------
 def modeset(card, connector, mode, fb):
-    crtc = connector.encoders[0].crtcs[0]
+    res = pykms.ResourceManager(card)
+
+    crtc = res.reserve_crtc(connector)
+    if not crtc:
+        raise RuntimeError("Failed to reserve CRTC")
 
     req = pykms.AtomicReq(card)
     req.add_connector(connector, crtc, fb)
