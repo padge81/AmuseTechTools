@@ -36,7 +36,7 @@ def create_fb(card, mode):
         pykms.PixelFormat.XRGB8888
     )
 
-    mm = fb.map(0)   # 👈 REQUIRED offset
+    mm = fb.map(fb.size)   # 👈 REQUIRED offset
 
     return fb, mm
     
@@ -52,14 +52,14 @@ def fill_color(mm, width, height, color):
         "white": (255, 255, 255),
     }
 
-    if color not in colors:
-        raise ValueError(f"Unknown color: {color}")
-
     r, g, b = colors[color]
-    pixel = bytes([b, g, r, 0])  # XRGB8888
+    pixel = bytes([b, g, r, 0])
 
-    mv = mm.cast("B")            # 🔥 flatten memoryview
-    mv[:] = pixel * (width * height)
+    stride = width * 4
+    for y in range(height):
+        start = y * stride
+        mm[start:start + stride] = pixel * width
+
     
 #---------------------------------------
 # Modeset (this makes it visible)
