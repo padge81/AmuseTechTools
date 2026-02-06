@@ -71,15 +71,18 @@ def modeset(card, connector, mode, fb):
 
     req = pykms.AtomicReq(card)
 
-    # 1. Attach connector to CRTC
+    # Attach connector → CRTC
     req.add_connector(connector, crtc)
 
-    # 2. Attach FB to CRTC
+    # Attach FB → CRTC
     req.add_crtc(crtc, fb)
 
-    # 3. Set mode via CRTC property
-    req.add_property(crtc, "MODE_ID", mode)
-    req.add_property(crtc, "ACTIVE", 1)
+    # Set MODE_ID and ACTIVE via properties
+    mode_prop = crtc.get_prop("MODE_ID")
+    active_prop = crtc.get_prop("ACTIVE")
+
+    req.add(crtc, mode_prop, mode)
+    req.add(crtc, active_prop, 1)
 
     req.commit()
         
