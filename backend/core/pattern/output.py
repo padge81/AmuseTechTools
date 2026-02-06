@@ -1,5 +1,5 @@
 import pykms
-import mmap
+#import mmap
 
 #---------------------------------------
 # Open DRM Card
@@ -29,24 +29,16 @@ def pick_mode(connector):
 # Create framebuffer + mmap
 #---------------------------------------
 def create_fb(card, mode):
-    stride = mode.hdisplay * 4
-    size = stride * mode.vdisplay
-
-    buf = pykms.DumbFramebuffer(
+    fb = pykms.DumbFramebuffer(
         card,
         mode.hdisplay,
         mode.vdisplay,
         pykms.PixelFormat.XRGB8888
     )
 
-    mm = mmap.mmap(
-        buf.fd(),
-        size,
-        mmap.MAP_SHARED,
-        mmap.PROT_WRITE | mmap.PROT_READ
-    )
+    mm = fb.map()   # ← THIS is the correct buffer access
 
-    return buf, mm
+    return fb, mm
     
 #---------------------------------------
 # Fill Framebuffer with solid colour
@@ -63,7 +55,7 @@ def fill_color(mm, width, height, color):
     r, g, b = colors[color]
     pixel = bytes([b, g, r, 0])  # XRGB
 
-    mm.seek(0)
+   # mm.seek(0)
     mm.write(pixel * (width * height))
     
 #---------------------------------------
