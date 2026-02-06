@@ -10,27 +10,10 @@ def open_card():
 #---------------------------------------
 # Find Connector By Name
 #--------------------------------------- 
-def normalize(name: str) -> str:
-    return name.replace("card0-", "").lower()
-
 def find_connector(card, requested_name):
-    req = normalize(requested_name)
-
-    for conn_id in range(0, 32):
-        try:
-            conn = pykms.Connector(card, conn_id)
-        except Exception:
-            continue
-
-        try:
-            full = normalize(conn.fullname)
-            if req in full and conn.connected():
-                print(f"[DRM] Matched connector: {conn.fullname}")
-                print(f"[DRM] Found: {conn.fullname} connected={conn.connected()}")
-                return conn
-        except Exception:
-            continue
-
+    for conn in card.connectors:
+        if conn.fullname == requested_name and conn.connected():
+            return conn
     raise RuntimeError(f"Connector {requested_name} not found or not connected")
 
 #---------------------------------------
@@ -38,8 +21,8 @@ def find_connector(card, requested_name):
 #---------------------------------------
 def pick_mode(connector):
     if not connector.modes:
-        raise RuntimeError("No modes available")
-    return connector.modes[0]
+        raise RuntimeError("No display modes available")
+    return connector.modes[0]  # preferred mode
     
 #---------------------------------------
 # Create framebuffer + mmap
@@ -86,27 +69,12 @@ def fill_color(mm, width, height, color):
 # Modeset (this makes it visible)
 #---------------------------------------
 def modeset(card, connector, mode, fb):
-    # Find a working encoder
-    enc = None
-    for enc_id in range(0, 8):
-        try:
-            e = pykms.Encoder(card, enc_id)
-        except Exception:
-            continue
+    crtc = connector.encoders[0].crtcs[0]
 
-        if e.id in connector.encoders:
-            enc = e
-            break
-
-    if not enc:
-        raise RuntimeError("No encoder found for connector")
-
-    crtc = pykms.Crtc(card, enc.crtcs[0])
-
-    pykms.AtomicReq(card) \
-        .add_connector(connector, crtc, fb) \
-        .add_crtc(crtc, fb, mode) \
-        .commit_sync()
+    req = pykms.AtomicReq(card)
+    req.add_connector(connector, crtc, fb)
+    req.add_crtc(crtc, fb, mode)
+    req.commit_sync()
         
 #---------------------------------------
 # High-level entry function (what worker calls)
