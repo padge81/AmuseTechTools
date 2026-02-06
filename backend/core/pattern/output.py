@@ -77,12 +77,11 @@ def modeset(card, connector, mode, fb):
     # Attach FB → CRTC
     req.add_crtc(crtc, fb)
 
-    # Set MODE_ID and ACTIVE via properties
-    mode_prop = crtc.get_prop("MODE_ID")
-    active_prop = crtc.get_prop("ACTIVE")
+    # --- MODE SETUP ---
+    mode_blob = card.create_blob(mode)
 
-    req.add(crtc, mode_prop, mode)
-    req.add(crtc, active_prop, 1)
+    req.add(crtc, "MODE_ID", mode_blob)
+    req.add(crtc, "ACTIVE", 1)
 
     req.commit()
         
