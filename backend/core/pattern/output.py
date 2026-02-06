@@ -26,6 +26,7 @@ def find_connector(card, requested_name):
             full = normalize(conn.fullname)
             if req in full and conn.connected():
                 print(f"[DRM] Matched connector: {conn.fullname}")
+                print(f"[DRM] Found: {conn.fullname} connected={conn.connected()}")
                 return conn
         except Exception:
             continue
