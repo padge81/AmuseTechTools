@@ -74,11 +74,23 @@ def fill_color(mm, width, height, color):
 # Modeset (this makes it visible)
 #---------------------------------------
 def modeset(card, connector, mode, fb):
-    crtc = connector.encoders[0].crtcs[0]
+    res = pykms.ResourceManager(card)
 
-    pykms.AtomicReq(card)\
-        .add_connector(connector, crtc, fb)\
-        .add_crtc(crtc, fb, mode)\
+    enc = None
+    for enc_id in res.encoder_ids:
+        e = pykms.Encoder(card, enc_id)
+        if e.id in connector.encoders:
+            enc = e
+            break
+
+    if not enc:
+        raise RuntimeError("No encoder found for connector")
+
+    crtc = pykms.Crtc(card, enc.crtcs[0])
+
+    pykms.AtomicReq(card) \
+        .add_connector(connector, crtc, fb) \
+        .add_crtc(crtc, fb, mode) \
         .commit_sync()
         
 #---------------------------------------
