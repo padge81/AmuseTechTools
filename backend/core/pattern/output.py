@@ -67,7 +67,7 @@ def fill_color(mm, width, height, color):
 # Modeset (this makes it visible)
 #---------------------------------------
 def modeset(card, connector, mode, fb):
-    crtc = card.get_first_connected_connector().crtcs[0]
+    crtc = card.crtcs[0]
 
     req = pykms.AtomicReq(card)
 
