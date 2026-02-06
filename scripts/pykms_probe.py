@@ -1,4 +1,4 @@
-python3 - << 'EOF'
+#python3 - << 'EOF'
 import pykms
 
 card = pykms.Card()
