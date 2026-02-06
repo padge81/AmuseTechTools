@@ -36,7 +36,7 @@ def create_fb(card, mode):
         pykms.PixelFormat.XRGB8888
     )
 
-    mm = fb.map(fb.size)   # 👈 REQUIRED offset
+    mm = fb.map(fb.size())  # ← CALL the method
 
     return fb, mm
     
