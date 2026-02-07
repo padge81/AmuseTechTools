@@ -17,7 +17,7 @@ def create_app():
     app.register_blueprint(system.bp)
     app.register_blueprint(edid.bp)
     app.register_blueprint(usb.bp)
-    app.register_blueprint(pattern.bp)
+    #app.register_blueprint(pattern.bp)
   
 
     # Main menu
