@@ -18,10 +18,10 @@ class PatternOutput:
                 self.process = None
 
     def start_solid(self, connector_id, mode, color):
-    self.stop()
+        self.stop()
 
-    cmd = ["kmscube"]
-    self.process = subprocess.Popen(cmd)
+        cmd = ["kmscube"]
+        self.process = subprocess.Popen(cmd)
 
 
     def off(self):
