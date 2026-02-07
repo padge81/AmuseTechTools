@@ -18,21 +18,10 @@ class PatternOutput:
                 self.process = None
 
     def start_solid(self, connector_id, mode, color):
-        """
-        Example:
-        modetest -M vc4 -a -s 33@0:1280x720 -F solid-red
-        """
-        self.stop()
+    self.stop()
 
-        cmd = [
-            "modetest",
-            "-M", "vc4",
-            "-a",
-            "-s", f"{connector_id}@0:{mode}",
-            "-F", f"solid-{color}",
-        ]
-
-        self.process = subprocess.Popen(cmd)
+    cmd = ["kmscube"]
+    self.process = subprocess.Popen(cmd)
 
 
     def off(self):
