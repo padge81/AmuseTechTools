@@ -1,8 +1,10 @@
 # backend/core/pattern/worker.py
 
+import threading
 import time
-import subprocess
+
 from .output import PatternOutput
+
 
 class PatternWorker(threading.Thread):
     def __init__(self, state):
@@ -28,7 +30,6 @@ class PatternWorker(threading.Thread):
 
         if state["mode"] == "solid":
             if state["output"] and state["value"]:
-                # Hardcode a known-good mode for now
                 self.output.start_solid(
                     connector_id=state["output"],
                     mode="1280x720",
