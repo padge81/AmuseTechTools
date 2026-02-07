@@ -1,18 +1,26 @@
-from threading import Lock
 
-_state = {
-    "output": None,        # HDMI-A-1
-    "mode": None,          # solid | pattern | saver
-    "value": None,         # green | smpte | logo
-    "active": False
-}
+import threading
+from copy import deepcopy
 
-_lock = Lock()
+class PatternState:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._state = {
+            "output": None,        # connector id (int)
+            "mode": "off",         # off | solid | screensaver
+            "value": None,         # e.g. "red"
+            "active": False,       # display ownership taken
+        }
 
-def set_state(**kwargs):
-    with _lock:
-        _state.update(kwargs)
+    def get(self):
+        with self._lock:
+            return deepcopy(self._state)
 
-def get_state():
-    with _lock:
-        return dict(_state)
+    def update(self, **kwargs):
+        with self._lock:
+            changed = False
+            for k, v in kwargs.items():
+                if self._state.get(k) != v:
+                    self._state[k] = v
+                    changed = True
+            return changed

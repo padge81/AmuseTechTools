@@ -17,3 +17,21 @@ No broken sudo
 
 
 ---------------------------------------------------------
+🛠️ Install modetest (correct package)
+
+On Raspberry Pi OS:
+
+sudo apt update
+sudo apt install -y libdrm-tests
+
+
+This provides:
+
+modetest
+
+other DRM debugging tools
+
+Verify:
+
+which modetest
+modetest -v

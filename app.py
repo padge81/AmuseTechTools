@@ -1,10 +1,13 @@
 from flask import Flask, render_template
-from threading import Thread
 import os
 
 from backend.routes import system, edid, usb
+from backend.routes.pattern import pattern_bp
 from backend.core.system.version import get_version
-from backend.core.pattern.worker import pattern_worker
+
+from backend.core.pattern.state import PatternState
+from backend.core.pattern.worker import PatternWorker
+
 
 def create_app():
     app = Flask(
@@ -13,14 +16,24 @@ def create_app():
         static_folder="frontend/static",
     )
 
+    # --------------------
+    # Pattern Generator core
+    # --------------------
+    pattern_state = PatternState()
+    pattern_worker = PatternWorker(pattern_state)
+
+    # Inject shared state into blueprint
+    pattern_bp.state = pattern_state
+
     # Register blueprints
     app.register_blueprint(system.bp)
     app.register_blueprint(edid.bp)
     app.register_blueprint(usb.bp)
-    #app.register_blueprint(pattern.bp)
-  
+    app.register_blueprint(pattern_bp)
 
-    # Main menu
+    # --------------------
+    # Routes
+    # --------------------
     @app.route("/")
     def index():
         return render_template("index.html", version=get_version())
@@ -41,13 +54,15 @@ def create_app():
     def input_output():
         return render_template("input_output.html")
 
+    # --------------------
+    # Start worker ONCE
+    # --------------------
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+        pattern_worker.start()
+
     return app
+
 
 if __name__ == "__main__":
     app = create_app()
-    
-        # 🔐 Start worker ONCE (avoid Flask reloader duplication)
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
-        Thread(target=pattern_worker, daemon=True).start()
- 
     app.run(host="0.0.0.0", port=8080, debug=True)

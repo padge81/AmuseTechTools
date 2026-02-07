@@ -1,70 +1,38 @@
+# backend/core/pattern/worker.py
+
 import time
+import subprocess
+from .output import PatternOutput
 
-from backend.core.pattern.state import get_state
-from backend.core.pattern import output
+class PatternWorker(threading.Thread):
+    def __init__(self, state):
+        super().__init__(daemon=True)
+        self.state = state
+        self.output = PatternOutput()
+        self._last_state = None
 
-_active_mode = None
-_active_output = None
-_active_value = None
+    def run(self):
+        while True:
+            current = self.state.get()
 
+            if current != self._last_state:
+                self.apply(current)
+                self._last_state = current
 
-def pattern_worker():
-    global _active_mode, _active_output, _active_value
+            time.sleep(0.2)
 
-    print("Pattern worker started")
+    def apply(self, state):
+        if not state["active"]:
+            self.output.off()
+            return
 
-    while True:
-        state = get_state()
-
-        # ---------------------------------
-        # Inactive → ensure output stopped
-        # ---------------------------------
-        if not state.get("active", False):
-            if _active_mode is not None:
-                output.stop_current()
-                _active_mode = None
-                _active_output = None
-                _active_value = None
-
-            time.sleep(0.1)
-            continue
-
-        mode = state.get("mode")
-        output_name = state.get("output")
-        value = state.get("value")
-
-        # ---------------------------------
-        # SOLID COLOUR
-        # ---------------------------------
-        if mode == "solid":
-            if (
-                _active_mode != "solid"
-                or _active_output != output_name
-                or _active_value != value
-            ):
-                output.solid_color(output_name, value)
-                _active_mode = "solid"
-                _active_output = output_name
-                _active_value = value
-
-        # ---------------------------------
-        # SCREENSAVER
-        # ---------------------------------
-        elif mode == "screensaver":
-            if _active_mode != "screensaver":
-                output.screensaver()
-                _active_mode = "screensaver"
-                _active_output = None
-                _active_value = None
-
-        # ---------------------------------
-        # OFF / UNKNOWN
-        # ---------------------------------
+        if state["mode"] == "solid":
+            if state["output"] and state["value"]:
+                # Hardcode a known-good mode for now
+                self.output.start_solid(
+                    connector_id=state["output"],
+                    mode="1280x720",
+                    color=state["value"],
+                )
         else:
-            if _active_mode is not None:
-                output.stop_current()
-                _active_mode = None
-                _active_output = None
-                _active_value = None
-
-        time.sleep(0.05)
+            self.output.off()
