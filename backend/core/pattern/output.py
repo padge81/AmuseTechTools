@@ -32,11 +32,8 @@ class PatternOutput:
             "-F", f"solid-{color}",
         ]
 
-        self.process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        self.process = subprocess.Popen(cmd)
+
 
     def off(self):
         self.stop()
