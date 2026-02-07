@@ -74,9 +74,7 @@ def modeset(card, connector, mode, fb):
     req.add_connector(connector, crtc)
     req.add_crtc(crtc, fb)
 
-    mode_blob = pykms.ModeBlob(card, mode)
-
-    req.add(crtc, "MODE_ID", mode_blob.id)
+    req.add(crtc, "MODE_ID", mode.id)
     req.add(crtc, "ACTIVE", 1)
 
     req.commit()
