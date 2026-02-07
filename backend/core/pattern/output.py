@@ -1,90 +1,93 @@
-import pykms
-#import mmap
+import subprocess
+import signal
+import time
+from typing import Optional
 
-#---------------------------------------
-# Open DRM Card
-#---------------------------------------
-def open_card():
-    return pykms.Card()
+# Track the currently running pattern process
+_current_process: Optional[subprocess.Popen] = None
 
-#---------------------------------------
-# Find Connector By Name
-#--------------------------------------- 
-def find_connector(card, requested_name):
-    for conn in card.connectors:
-        if conn.fullname == requested_name and conn.connected():
-            return conn
-    raise RuntimeError(f"Connector {requested_name} not found or not connected")
 
-#---------------------------------------
-# Pick a Mode
-#---------------------------------------
-def pick_mode(connector):
-    modes = connector.get_modes()
-    if not modes:
-        raise RuntimeError("No display modes available")
-    return modes[0]  # preferred / first mode
-    
-#---------------------------------------
-# Create framebuffer + mmap
-#---------------------------------------
-def create_fb(card, mode):
-    fb = pykms.DumbFramebuffer(
-        card,
-        mode.hdisplay,
-        mode.vdisplay,
-        pykms.PixelFormat.XRGB8888
+# -------------------------------------------------
+# Process control helpers
+# -------------------------------------------------
+
+def start_command(cmd: list[str]):
+    """
+    Stop any existing pattern process and start a new one.
+    """
+    global _current_process
+
+    stop_current()
+
+    _current_process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True  # ensures clean signal handling
     )
 
-    offset = fb.offset(0)   # plane 0
-    mm = fb.map(offset)     # mmap framebuffer
 
-    return fb, mm
-#---------------------------------------
-# Fill Framebuffer with solid colour
-#---------------------------------------
-def fill_color(mm, width, height, color):
-    colors = {
-        "red":   (255, 0, 0),
-        "green": (0, 255, 0),
-        "blue":  (0, 0, 255),
-        "black": (0, 0, 0),
-        "white": (255, 255, 255),
-    }
+def stop_current():
+    """
+    Stop the currently running pattern process (if any).
+    """
+    global _current_process
 
-    r, g, b = colors[color]
-    pixel = bytes([b, g, r, 0])  # XRGB8888
+    if not _current_process:
+        return
 
-    buf = mm.cast("B")          # 👈 flatten to 1D
-    stride = width * 4
+    try:
+        _current_process.send_signal(signal.SIGTERM)
+        _current_process.wait(timeout=1)
+    except Exception:
+        # Force kill if it refuses to die
+        try:
+            _current_process.kill()
+        except Exception:
+            pass
 
-    for y in range(height):
-        start = y * stride
-        buf[start:start + stride] = pixel * width
+    _current_process = None
 
-    
-#---------------------------------------
-# Modeset (this makes it visible)
-#---------------------------------------
-def modeset(card, connector, mode, fb):
-    crtc = card.crtcs[0]
 
-    card.set_mode(
-        crtc=crtc,
-        connector=connector,
-        mode=mode,
-        fb=fb
-    )
-        
-#---------------------------------------
-# High-level entry function (what worker calls)
-#---------------------------------------
-def output_solid_color(connector_name, color):
-    card = open_card()
-    connector = find_connector(card, connector_name)
-    mode = pick_mode(connector)
+# -------------------------------------------------
+# Pattern commands
+# -------------------------------------------------
 
-    fb, mm = create_fb(card, mode)
-    fill_color(mm, mode.hdisplay, mode.vdisplay, color)
-    modeset(card, connector, mode, fb)
+def solid_color(output: str, color: str):
+    """
+    Display a solid colour using modetest.
 
+    `output` is a DRM connector name (e.g. HDMI-A-1, DSI-1)
+    `color` is a modetest colour name (red, green, blue, white, black)
+    """
+
+    # modetest requires a full mode string; we let it auto-pick the preferred mode
+    cmd = [
+        "modetest",
+        "-M", "vc4",
+        "-s", f"{output}@0:{color}"
+    ]
+
+    start_command(cmd)
+
+
+def screensaver():
+    """
+    Simple screensaver / blanking mode.
+    Implemented as an external script so it can evolve independently.
+    """
+
+    start_command([
+        "/usr/local/bin/screensaver.sh"
+    ])
+
+
+# -------------------------------------------------
+# Emergency cleanup (used on release / shutdown)
+# -------------------------------------------------
+
+def shutdown():
+    """
+    Hard stop all output activity.
+    """
+    stop_current()

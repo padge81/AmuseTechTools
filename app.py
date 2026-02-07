@@ -2,7 +2,7 @@ from flask import Flask, render_template
 from threading import Thread
 import os
 
-from backend.routes import system, edid, usb, pattern
+from backend.routes import system, edid, usb
 from backend.core.system.version import get_version
 from backend.core.pattern.worker import pattern_worker
 

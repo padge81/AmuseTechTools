@@ -1,10 +1,22 @@
 import time
 from backend.core.pattern.state import get_state
 from backend.core.pattern.output import output_solid_color
+from core.pattern import output
 
 _active_output = None
 _active_color = None
 
+
+
+def pattern_worker(state):
+    while True:
+        if state["mode"] == "solid":
+            output.solid_color(state["value"])
+        elif state["mode"] == "screensaver":
+            output.screensaver()
+        elif state["mode"] == "off":
+            output.stop_current()
+            
 def pattern_worker():
     global _active_output, _active_color
 
