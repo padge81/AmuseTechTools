@@ -69,15 +69,12 @@ def fill_color(mm, width, height, color):
 def modeset(card, connector, mode, fb):
     crtc = card.crtcs[0]
 
-    req = pykms.AtomicReq(card)
-
-    req.add_connector(connector, crtc)
-    req.add_crtc(crtc, fb)
-
-    req.add(crtc, "MODE_ID", mode.id)
-    req.add(crtc, "ACTIVE", 1)
-
-    req.commit()
+    card.set_mode(
+        crtc=crtc,
+        connector=connector,
+        mode=mode,
+        fb=fb
+    )
         
 #---------------------------------------
 # High-level entry function (what worker calls)
