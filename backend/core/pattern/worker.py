@@ -1,41 +1,70 @@
 import time
+
 from backend.core.pattern.state import get_state
-from backend.core.pattern.output import output_solid_color
-from core.pattern import output
+from backend.core.pattern import output
 
+_active_mode = None
 _active_output = None
-_active_color = None
+_active_value = None
 
 
-
-def pattern_worker(state):
-    while True:
-        if state["mode"] == "solid":
-            output.solid_color(state["value"])
-        elif state["mode"] == "screensaver":
-            output.screensaver()
-        elif state["mode"] == "off":
-            output.stop_current()
-            
 def pattern_worker():
-    global _active_output, _active_color
+    global _active_mode, _active_output, _active_value
 
     print("Pattern worker started")
 
     while True:
         state = get_state()
 
-        if not state["active"]:
+        # ---------------------------------
+        # Inactive → ensure output stopped
+        # ---------------------------------
+        if not state.get("active", False):
+            if _active_mode is not None:
+                output.stop_current()
+                _active_mode = None
+                _active_output = None
+                _active_value = None
+
             time.sleep(0.1)
             continue
 
-        # Only reconfigure if something changed
-        if (
-            state["mode"] == "solid" and
-            (state["output"] != _active_output or state["value"] != _active_color)
-        ):
-            output_solid_color(state["output"], state["value"])
-            _active_output = state["output"]
-            _active_color = state["value"]
+        mode = state.get("mode")
+        output_name = state.get("output")
+        value = state.get("value")
+
+        # ---------------------------------
+        # SOLID COLOUR
+        # ---------------------------------
+        if mode == "solid":
+            if (
+                _active_mode != "solid"
+                or _active_output != output_name
+                or _active_value != value
+            ):
+                output.solid_color(output_name, value)
+                _active_mode = "solid"
+                _active_output = output_name
+                _active_value = value
+
+        # ---------------------------------
+        # SCREENSAVER
+        # ---------------------------------
+        elif mode == "screensaver":
+            if _active_mode != "screensaver":
+                output.screensaver()
+                _active_mode = "screensaver"
+                _active_output = None
+                _active_value = None
+
+        # ---------------------------------
+        # OFF / UNKNOWN
+        # ---------------------------------
+        else:
+            if _active_mode is not None:
+                output.stop_current()
+                _active_mode = None
+                _active_output = None
+                _active_value = None
 
         time.sleep(0.05)
