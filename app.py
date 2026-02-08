@@ -20,7 +20,7 @@ def create_app():
     # Pattern Generator core
     # --------------------
     pattern_state = PatternState()
-    pattern_worker = PatternWorker(pattern_state)
+    pattern_worker = PatternWorker()
 
     # Inject shared state into blueprint
     pattern_bp.state = pattern_state
