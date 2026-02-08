@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app import pattern_worker
+from app import Pattern_Worker
 import subprocess
 
 bp = Blueprint("pattern", __name__, url_prefix="/pattern")
