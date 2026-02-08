@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify
+from app import pattern_worker
 import subprocess
 
-pattern_bp = Blueprint("pattern", __name__)
+pattern_bp = Blueprint("pattern", __name__, url_prefix="/pattern")
 
 
 @pattern_bp.route("/pattern/control", methods=["POST"])

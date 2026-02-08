@@ -5,7 +5,7 @@ from backend.routes import system, edid, usb
 from backend.routes.pattern import pattern_bp
 from backend.core.system.version import get_version
 
-from backend.core.pattern.state import PatternState
+#from backend.core.pattern.state import PatternState
 from backend.core.pattern.worker import PatternWorker
 
 
@@ -60,7 +60,7 @@ def create_app():
     #if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
      #   pattern_worker.start()
 
-    #return app
+    return app
 
 
 if __name__ == "__main__":
