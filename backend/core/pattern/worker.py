@@ -1,39 +1,31 @@
 # backend/core/pattern/worker.py
 
+import subprocess
+import signal
 import threading
-import time
-
-from .output import PatternOutput
 
 
-class PatternWorker(threading.Thread):
-    def __init__(self, state):
-        super().__init__(daemon=True)
-        self.state = state
-        self.output = PatternOutput()
-        self._last_state = None
+class PatternWorker:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._proc = None
 
-    def run(self):
-        while True:
-            current = self.state.get()
+    def start_kmscube(self, connector_id=33):
+        with self._lock:
+            self.stop()
 
-            if current != self._last_state:
-                self.apply(current)
-                self._last_state = current
+            print("[pattern] starting kmscube")
 
-            time.sleep(0.2)
+            self._proc = subprocess.Popen(
+                ["kmscube", "-n", str(connector_id)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
 
-    def apply(self, state):
-        if not state["active"]:
-            self.output.off()
-            return
-
-        if state["mode"] == "solid":
-            if state["output"] and state["value"]:
-                self.output.start_solid(
-                    connector_id=state["output"],
-                    mode="1280x720",
-                    color=state["value"],
-                )
-        else:
-            self.output.off()
+    def stop(self):
+        with self._lock:
+            if self._proc:
+                print("[pattern] stopping current pattern")
+                self._proc.send_signal(signal.SIGINT)
+                self._proc.wait(timeout=2)
+                self._proc = None
