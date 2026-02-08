@@ -19,7 +19,7 @@ def create_app():
     # --------------------
     # Pattern Generator core
     # --------------------
-    pattern_state = PatternState()
+    #pattern_state = PatternState()
     pattern_worker = PatternWorker()
 
     # Inject shared state into blueprint
@@ -57,10 +57,10 @@ def create_app():
     # --------------------
     # Start worker ONCE
     # --------------------
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
-        pattern_worker.start()
+    #if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+     #   pattern_worker.start()
 
-    return app
+    #return app
 
 
 if __name__ == "__main__":
