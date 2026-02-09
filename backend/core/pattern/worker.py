@@ -12,15 +12,21 @@ class PatternWorker:
 
     def start_kmscube(self, connector_id=33):
         print("🔥 start_kmscube CALLED", connector_id, flush=True)
+
         with self._lock:
             self.stop()
-            self._proc = subprocess.Popen(["kmscube", "-n", str(connector_id)])
-)
+
+            self._proc = subprocess.Popen(
+                ["kmscube", "-n", str(connector_id)]
+            )
 
     def stop(self):
         with self._lock:
             if self._proc:
-                print("[pattern] stopping current pattern")
+                print("[pattern] stopping current pattern", flush=True)
                 self._proc.send_signal(signal.SIGINT)
-                self._proc.wait(timeout=2)
+                try:
+                    self._proc.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    self._proc.kill()
                 self._proc = None
