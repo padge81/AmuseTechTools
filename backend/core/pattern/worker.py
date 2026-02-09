@@ -18,9 +18,7 @@ class PatternWorker:
 
             self._proc = subprocess.Popen(
                 ["kmscube", "-n", str(connector_id)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+)
 
     def stop(self):
         with self._lock:
