@@ -1,12 +1,12 @@
 from flask import Flask, render_template
+
 import os
 
 from backend.routes import system, edid, usb
 from backend.routes.pattern import pattern_bp
 from backend.core.system.version import get_version
 
-#from backend.core.pattern.state import PatternState
-from backend.core.pattern.worker import PatternWorker
+
 
 
 def create_app():
@@ -16,14 +16,6 @@ def create_app():
         static_folder="frontend/static",
     )
 
-    # --------------------
-    # Pattern Generator core
-    # --------------------
-    #pattern_state = PatternState()
-    pattern_worker = PatternWorker()
-
-    # Inject shared state into blueprint
-    pattern_bp.state = pattern_state
 
     # Register blueprints
     app.register_blueprint(system.bp)

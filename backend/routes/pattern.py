@@ -1,8 +1,7 @@
-# backend/routes/pattern.py
-
 from flask import Blueprint, request, jsonify
-from app import pattern_worker
 import subprocess
+
+from backend.core.pattern.service import pattern_worker
 
 pattern_bp = Blueprint("pattern", __name__, url_prefix="/pattern")
 
