@@ -22,11 +22,10 @@ def control():
 
 @pattern_bp.route("/start", methods=["POST"])
 def start():
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     connector_id = data.get("connector_id", 33)
 
     pattern_worker.start_kmscube(connector_id)
-
     return jsonify({"ok": True})
 
 
