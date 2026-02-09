@@ -1,35 +1,37 @@
+# backend/routes/pattern.py
+
 from flask import Blueprint, request, jsonify
 from app import pattern_worker
 import subprocess
 
-bp = Blueprint("pattern", __name__, url_prefix="/pattern")
+pattern_bp = Blueprint("pattern", __name__, url_prefix="/pattern")
 
 
-@pattern_bp.route("/pattern/control", methods=["POST"])
+@pattern_bp.route("/control", methods=["POST"])
 def control():
     action = request.json.get("action")
-    state = pattern_bp.state  # <-- THIS is the fix
 
     if action == "take":
         subprocess.run(["systemctl", "stop", "lightdm"], check=False)
-        state.update(active=True)
 
     elif action == "release":
-        state.update(active=False)
+        pattern_worker.stop()
         subprocess.run(["systemctl", "start", "lightdm"], check=False)
 
     return jsonify({"ok": True})
 
 
-@pattern_bp.route("/pattern/solid", methods=["POST"])
-def solid():
-    state = pattern_bp.state  # <-- and here
+@pattern_bp.route("/start", methods=["POST"])
+def start():
+    data = request.json or {}
+    connector_id = data.get("connector_id", 33)
 
-    data = request.json
-    state.update(
-        mode="solid",
-        value=data.get("color"),
-        output=data.get("connector_id"),
-    )
+    pattern_worker.start_kmscube(connector_id)
 
+    return jsonify({"ok": True})
+
+
+@pattern_bp.route("/stop", methods=["POST"])
+def stop():
+    pattern_worker.stop()
     return jsonify({"ok": True})
