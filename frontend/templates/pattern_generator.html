@@ -14,9 +14,12 @@
     </div>
 
     <label style="display:block; margin: 0 0 16px;">
-        <input id="global_drm_toggle" type="checkbox" />
+        <input id="global_drm_toggle" type="checkbox" disabled />
         Use global DRM control handover (stop display manager) for take/release
     </label>
+    <p style="margin-top:-10px; margin-bottom:16px; opacity:0.85; color:#fbbf24;">
+        Note: global DRM handover is system-wide and can affect all displays.
+    </p>
 
     <label for="color_picker">Solid Colour</label>
     <input id="color_picker" type="color" value="#ffffff" style="display:block; width:120px; height:48px; border:none; padding:0; background:none; margin:8px 0;" />
@@ -61,11 +64,13 @@ async function loadCapabilities() {
         const response = await fetch('/pattern/capabilities');
         const caps = await response.json();
         const scope = caps.display_control_scope || 'unknown';
-        const globalMode = caps.force_global_drm_control ? 'ON' : 'OFF';
+        const handoverScope = caps.global_drm_handover_scope || 'unknown';
+        const globalMode = caps.force_global_drm_control ? 'FORCED' : (caps.allow_global_drm_control ? 'AVAILABLE' : 'DISABLED');
+        const protectedConnectors = Array.isArray(caps.protected_connectors) ? caps.protected_connectors.join(', ') : '(none)';
         const toggle = document.getElementById('global_drm_toggle');
         toggle.checked = !!caps.force_global_drm_control;
-        toggle.disabled = !!caps.force_global_drm_control;
-        setStatus(`Capabilities: scope=${scope}, force_global_drm_control=${globalMode}.`);
+        toggle.disabled = !!caps.force_global_drm_control || !caps.allow_global_drm_control;
+        setStatus(`Capabilities: scope=${scope}, global_handover_scope=${handoverScope}, global_mode=${globalMode}, protected_connectors=${protectedConnectors}.`);
     } catch (err) {
         setStatus(`Could not load capabilities: ${err.message}`);
     }
@@ -116,7 +121,8 @@ async function takeControl() {
             connector_id,
             global_drm_control: useGlobalDrmControl(),
         });
-        setStatus(`${result.message} Owned connectors: ${result.owned_connectors.join(', ') || '(none)'}`);
+        const warning = result.warning ? ` Warning: ${result.warning}` : '';
+        setStatus(`${result.message}${warning} Owned connectors: ${result.owned_connectors.join(', ') || '(none)'}`);
     } catch (err) {
         setStatus(`Error: ${err.message}`);
     }

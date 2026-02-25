@@ -11,6 +11,10 @@ pattern_bp = Blueprint("pattern_api", __name__, url_prefix="/pattern")
 _DISPLAY_MANAGER_SERVICE = os.environ.get("PATTERN_DISPLAY_MANAGER_SERVICE", "lightdm")
 # Optional fallback for environments that require DRM master handover.
 _FORCE_GLOBAL_DRM_CONTROL = os.environ.get("PATTERN_FORCE_GLOBAL_DRM_CONTROL", "0") == "1"
+_ALLOW_GLOBAL_DRM_CONTROL = _FORCE_GLOBAL_DRM_CONTROL or os.environ.get("PATTERN_ALLOW_GLOBAL_DRM_CONTROL", "0") == "1"
+_PROTECTED_CONNECTORS = {
+    name.strip() for name in os.environ.get("PATTERN_PROTECTED_CONNECTORS", "DSI-1").split(",") if name.strip()
+}
 
 _ownership_lock = threading.Lock()
 _owned_connectors = set()
@@ -36,6 +40,20 @@ def _parse_connector_id(data, default=None):
         return int(value), None, None
     except (TypeError, ValueError):
         return None, jsonify({"ok": False, "error": "connector_id must be an integer"}), 400
+
+
+def _connector_name_by_id(connector_id):
+    for output in list_connectors():
+        if output.get("connector_id") == connector_id:
+            return output.get("name")
+    return None
+
+
+def _is_protected_connector(connector_id):
+    name = _connector_name_by_id(connector_id)
+    if not name:
+        return False, None
+    return name in _PROTECTED_CONNECTORS, name
 
 
 def _set_display_manager(enabled):
@@ -88,8 +106,11 @@ def capabilities():
     return jsonify({
         "renderer": "gstreamer-kmssink",
         "display_control_scope": "per-connector-reservation",
+        "global_drm_handover_scope": "all-displays",
         "supports_connector_selection": True,
+        "allow_global_drm_control": _ALLOW_GLOBAL_DRM_CONTROL,
         "force_global_drm_control": _FORCE_GLOBAL_DRM_CONTROL,
+        "protected_connectors": sorted(_PROTECTED_CONNECTORS),
     })
 
 
@@ -106,6 +127,20 @@ def control():
     if error_response:
         return error_response, code
 
+    protected, connector_name = _is_protected_connector(connector_id)
+
+    if use_global_drm_control and not _ALLOW_GLOBAL_DRM_CONTROL:
+        return jsonify({
+            "ok": False,
+            "error": "global_drm_control is disabled on this system to avoid taking over all displays",
+        }), 400
+
+    if action == "take" and protected:
+        return jsonify({
+            "ok": False,
+            "error": f"connector '{connector_name}' is protected and cannot be taken over",
+        }), 403
+
     with _ownership_lock:
         if action == "take":
             if use_global_drm_control:
@@ -120,6 +155,9 @@ def control():
                 "connector_id": connector_id,
                 "owned_connectors": sorted(_owned_connectors),
                 "global_drm_control": use_global_drm_control,
+                "warning": "Global DRM handover stops the display manager and affects all displays."
+                if use_global_drm_control
+                else None,
                 "message": "Connector reserved for pattern output."
                 if not use_global_drm_control
                 else "Connector reserved and global DRM control acquired.",
@@ -151,6 +189,13 @@ def start():
     connector_id, error_response, code = _parse_connector_id(data)
     if error_response:
         return error_response, code
+
+    protected, connector_name = _is_protected_connector(connector_id)
+    if protected:
+        return jsonify({
+            "ok": False,
+            "error": f"connector '{connector_name}' is protected and cannot be driven by pattern output",
+        }), 403
 
     mode = data.get("mode", "colorbars")
 
