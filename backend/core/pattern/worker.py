@@ -11,10 +11,7 @@ class PatternWorker:
     def start_kmscube(self, connector_id=33):
         with self._lock:
             self._stop_locked(connector_id)
-            try:
-                self._procs[connector_id] = subprocess.Popen(["kmscube", "-n", str(connector_id)])
-            except FileNotFoundError as exc:
-                raise RuntimeError("kmscube is not installed or not in PATH") from exc
+            self._procs[connector_id] = subprocess.Popen(["kmscube", "-n", str(connector_id)])
 
     def stop(self, connector_id=None):
         with self._lock:
@@ -24,6 +21,10 @@ class PatternWorker:
                 return
 
             self._stop_locked(connector_id)
+        self.stop()
+
+        with self._lock:
+            self._proc = subprocess.Popen(["kmscube", "-n", str(connector_id)])
 
     def _stop_locked(self, connector_id):
         proc = self._procs.get(connector_id)

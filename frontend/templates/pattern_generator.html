@@ -4,13 +4,7 @@
     <h1>Pattern Generator</h1>
 
     <label for="screen_select">Screen</label>
-    <select id="screen_select" style="display:block; margin: 8px 0 8px; padding: 8px; width: 320px;">
-        <option value="33" selected>Fallback connector (33)</option>
-        <option value="custom">Custom connector id…</option>
-    </select>
-
-    <label for="custom_connector_id">Custom connector id</label>
-    <input id="custom_connector_id" type="number" min="0" value="33" style="display:block; margin: 8px 0 16px; padding: 8px; width: 220px;" />
+    <select id="screen_select" style="display:block; margin: 8px 0 16px; padding: 8px; width: 320px;"></select>
 
     <div style="display:flex; gap:8px; flex-wrap: wrap; margin-bottom: 16px;">
         <button onclick="takeControl()">Take Display Control</button>
@@ -28,19 +22,55 @@
 
 <script>
 const screenSelect = document.getElementById('screen_select');
-const customConnectorInput = document.getElementById('custom_connector_id');
 
 function setStatus(message) {
     document.getElementById('status').textContent = message;
 }
 
 function selectedConnectorId() {
-    if (screenSelect.value === 'custom') {
-        return Number(customConnectorInput.value || 33);
-    }
-
     return Number(screenSelect.value);
 }
+    <label for="screen_select">Screen (Connector ID)</label>
+    <select id="screen_select" style="display:block; margin: 8px 0 8px; padding: 8px; width: 260px;">
+        <option value="31">Connector 31</option>
+        <option value="32">Connector 32</option>
+        <option value="33" selected>Connector 33 (default)</option>
+        <option value="34">Connector 34</option>
+        <option value="35">Connector 35</option>
+        <option value="custom">Custom…</option>
+    </select>
+
+    <input id="connector_id" type="number" value="33" min="0" style="display:block; margin: 0 0 16px; padding: 8px; width: 240px;" />
+
+    <div style="display:flex; gap:8px; flex-wrap: wrap; margin-bottom: 16px;">
+        <button onclick="startPattern()">Start</button>
+        <button onclick="stopPattern()">Stop</button>
+        <button onclick="takeControl()">Take Display Control</button>
+        <button onclick="releaseControl()">Release Display Control</button>
+    </div>
+
+    <label for="color_picker">Colour Wheel</label>
+    <input id="color_picker" type="color" value="#ffffff" style="display:block; width:120px; height:48px; border:none; padding:0; background:none; margin:8px 0 8px;" />
+
+    <div style="display:flex; gap:8px; flex-wrap: wrap;">
+        <button onclick="showFullscreenColor()">Display Full Screen Colour</button>
+        <button onclick="exitFullscreenColor()">Exit Full Screen Colour</button>
+    </div>
+
+    <pre id="status" style="margin-top: 16px; background:#111; color:#eee; padding: 12px; border-radius: 6px; min-height: 52px;">Ready.</pre>
+</div>
+
+<div id="color_overlay" style="position:fixed; inset:0; display:none; z-index:9999;"></div>
+
+<script>
+const screenSelect = document.getElementById('screen_select');
+const connectorInput = document.getElementById('connector_id');
+
+screenSelect.addEventListener('change', () => {
+    if (screenSelect.value !== 'custom') {
+        connectorInput.value = screenSelect.value;
+    }
+});
 
 async function postJson(url, payload = {}) {
     const response = await fetch(url, {
@@ -60,47 +90,30 @@ async function loadOutputs() {
     try {
         const response = await fetch('/pattern/outputs');
         const outputs = await response.json();
-        const list = Array.isArray(outputs) ? outputs : [];
 
+        const usable = outputs.filter(o => o.connected && o.connector_id !== null);
         screenSelect.innerHTML = '';
 
-        const withIds = list.filter(o => o.connected && o.connector_id !== null);
-
-        withIds.forEach((output, index) => {
+        usable.forEach((output, index) => {
             const option = document.createElement('option');
-            option.value = String(output.connector_id);
+            option.value = output.connector_id;
             option.textContent = `${output.name} (id ${output.connector_id})`;
-            if (index === 0) {
-                option.selected = true;
-                customConnectorInput.value = String(output.connector_id);
-            }
+            if (index === 0) option.selected = true;
             screenSelect.appendChild(option);
         });
 
-        if (withIds.length === 0) {
-            const fallbackOption = document.createElement('option');
-            fallbackOption.value = '33';
-            fallbackOption.textContent = 'Fallback connector (33)';
-            fallbackOption.selected = true;
-            screenSelect.appendChild(fallbackOption);
+        if (usable.length === 0) {
+            const option = document.createElement('option');
+            option.value = '33';
+            option.textContent = 'No connected outputs with connector_id found (fallback id 33)';
+            screenSelect.appendChild(option);
         }
-
-        const customOption = document.createElement('option');
-        customOption.value = 'custom';
-        customOption.textContent = 'Custom connector id…';
-        screenSelect.appendChild(customOption);
 
         setStatus('Outputs loaded.');
     } catch (err) {
-        setStatus(`Error loading outputs: ${err.message}. Using fallback connector options.`);
+        setStatus(`Error loading outputs: ${err.message}`);
     }
 }
-
-screenSelect.addEventListener('change', () => {
-    if (screenSelect.value !== 'custom') {
-        customConnectorInput.value = screenSelect.value;
-    }
-});
 
 async function takeControl() {
     const connector_id = selectedConnectorId();
@@ -127,6 +140,22 @@ async function startPattern() {
     try {
         await postJson('/pattern/start', { connector_id });
         setStatus(`Pattern started on connector ${connector_id}.`);
+
+    if (!response.ok) {
+        throw new Error(body.error || `Request failed (${response.status})`);
+    }
+
+    return body;
+}
+
+function setStatus(message) {
+    document.getElementById('status').textContent = message;
+}
+
+async function takeControl() {
+    try {
+        await postJson('/pattern/control', { action: 'take' });
+        setStatus('Display control taken.');
     } catch (err) {
         setStatus(`Error: ${err.message}`);
     }
@@ -137,6 +166,10 @@ async function stopPattern() {
     try {
         await postJson('/pattern/stop', { connector_id });
         setStatus(`Pattern stopped on connector ${connector_id}.`);
+async function releaseControl() {
+    try {
+        await postJson('/pattern/control', { action: 'release' });
+        setStatus('Display control released.');
     } catch (err) {
         setStatus(`Error: ${err.message}`);
     }
@@ -149,11 +182,55 @@ async function showColor() {
     try {
         await postJson('/pattern/start', { connector_id, color, mode: 'solid' });
         setStatus(`Requested colour ${color} on connector ${connector_id} via KMS process.`);
+async function startPattern() {
+    const connectorId = Number(connectorInput.value || 33);
+
+    try {
+        const result = await postJson('/pattern/start', { connector_id: connectorId });
+        setStatus(`Pattern started on connector ${result.connector_id}.`);
     } catch (err) {
         setStatus(`Error: ${err.message}`);
     }
 }
 
 loadOutputs();
+async function stopPattern() {
+    try {
+        await postJson('/pattern/stop');
+        setStatus('Pattern stopped.');
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
+}
+
+async function showFullscreenColor() {
+    const overlay = document.getElementById('color_overlay');
+    const color = document.getElementById('color_picker').value;
+    overlay.style.backgroundColor = color;
+    overlay.style.display = 'block';
+
+    if (overlay.requestFullscreen) {
+        await overlay.requestFullscreen().catch(() => {});
+    }
+
+    setStatus(`Showing full-screen colour ${color}.`);
+}
+
+async function exitFullscreenColor() {
+    const overlay = document.getElementById('color_overlay');
+
+    if (document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen().catch(() => {});
+    }
+
+    overlay.style.display = 'none';
+    setStatus('Exited full-screen colour display.');
+}
+
+window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        document.getElementById('color_overlay').style.display = 'none';
+    }
+});
 </script>
 {% endblock %}
