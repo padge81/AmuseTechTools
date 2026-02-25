@@ -1,99 +1,188 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Pattern Generator (Test)</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            padding: 20px;
-            background: #111;
-            color: #eee;
-        }
-        select, button {
-            font-size: 16px;
-            padding: 6px;
-            margin: 5px 0;
-        }
-        #status {
-            margin-top: 20px;
-            background: #222;
-            padding: 10px;
-            white-space: pre;
-            font-family: monospace;
-        }
-    </style>
-</head>
-<body>
+{% extends "base.html" %}
+{% block content %}
+<div class="container" style="max-width: 860px;">
+    <h1>Pattern Generator</h1>
+    <p style="margin: 0 0 12px; opacity: 0.85;">Connector-aware KMS controls. Use <strong>Reload Outputs</strong> to confirm what the backend discovers.</p>
 
-<h1>Pattern Generator (Test)</h1>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;">
+        <button onclick="loadOutputs()">Reload Outputs</button>
+        <span id="active_connector_badge" style="padding:4px 10px; border-radius:999px; background:#1f2937; color:#f3f4f6; font-size:13px;">Active connector: 33</span>
+    </div>
 
-<label>Output:</label><br>
-<select id="output"></select><br>
+    <label for="screen_select">Screen</label>
+    <select id="screen_select" style="display:block; margin: 8px 0 8px; padding: 8px; width: 360px;">
+        <option value="33" selected>Fallback connector (33)</option>
+        <option value="custom">Custom connector id…</option>
+    </select>
 
-<label>Solid Color:</label><br>
-<select id="color">
-    <option value="red">Red</option>
-    <option value="green">Green</option>
-    <option value="blue">Blue</option>
-    <option value="white">White</option>
-    <option value="black">Black</option>
-</select><br>
+    <label for="custom_connector_id">Custom connector id</label>
+    <input id="custom_connector_id" type="number" min="0" value="33" style="display:block; margin: 8px 0 16px; padding: 8px; width: 220px;" />
 
-<button onclick="apply()">Apply</button>
-<button onclick="stop()">Stop</button>
+    <div style="display:flex; gap:8px; flex-wrap: wrap; margin-bottom: 16px;">
+        <button onclick="takeControl()">Take Display Control</button>
+        <button onclick="releaseControl()">Release Display Control</button>
+        <button onclick="startPattern()">Start</button>
+        <button onclick="stopPattern()">Stop</button>
+    </div>
 
-<div id="status">Status: (loading)</div>
+    <label for="color_picker">Colour</label>
+    <input id="color_picker" type="color" value="#ffffff" style="display:block; width:120px; height:48px; border:none; padding:0; background:none; margin:8px 0;" />
+    <button onclick="showColor()">Display Full Screen Colour (KMS)</button>
+
+    <pre id="status" style="margin-top: 16px; background:#111; color:#eee; padding: 12px; border-radius: 6px; min-height: 52px;">Loading outputs…</pre>
+
+    <h3 style="margin:16px 0 8px;">Discovered Outputs (debug)</h3>
+    <pre id="outputs_debug" style="margin-top: 0; background:#0b1220; color:#d1d5db; padding: 12px; border-radius: 6px; min-height: 80px;">(not loaded)</pre>
+</div>
 
 <script>
+const screenSelect = document.getElementById('screen_select');
+const customConnectorInput = document.getElementById('custom_connector_id');
+const activeConnectorBadge = document.getElementById('active_connector_badge');
+const outputsDebug = document.getElementById('outputs_debug');
+
+function setStatus(message) {
+    document.getElementById('status').textContent = message;
+}
+
+function selectedConnectorId() {
+    if (screenSelect.value === 'custom') {
+        return Number(customConnectorInput.value || 33);
+    }
+
+    return Number(screenSelect.value);
+}
+
+function refreshActiveConnectorBadge() {
+    activeConnectorBadge.textContent = `Active connector: ${selectedConnectorId()}`;
+}
+
+async function postJson(url, payload = {}) {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(body.error || `Request failed (${response.status})`);
+    }
+    return body;
+}
+
 async function loadOutputs() {
-    const res = await fetch("/api/pattern/outputs");
-    const outputs = await res.json();
+    try {
+        const response = await fetch('/pattern/outputs');
+        const outputs = await response.json();
+        const list = Array.isArray(outputs) ? outputs : [];
 
-    const sel = document.getElementById("output");
-    sel.innerHTML = "";
+        outputsDebug.textContent = JSON.stringify(list, null, 2);
+        screenSelect.innerHTML = '';
 
-    outputs.forEach(o => {
-        if (o.connected) {
-            const opt = document.createElement("option");
-            opt.value = o.name;
-            opt.textContent = o.name;
-            sel.appendChild(opt);
+        const connected = list.filter(o => o.connected);
+        const withIds = connected.filter(o => o.connector_id !== null);
+
+        withIds.forEach((output, index) => {
+            const option = document.createElement('option');
+            option.value = String(output.connector_id);
+            option.textContent = `${output.name} (id ${output.connector_id})`;
+            if (index === 0) {
+                option.selected = true;
+                customConnectorInput.value = String(output.connector_id);
+            }
+            screenSelect.appendChild(option);
+        });
+
+        if (withIds.length === 0) {
+            const fallbackOption = document.createElement('option');
+            fallbackOption.value = '33';
+            fallbackOption.textContent = connected.length > 0
+                ? 'Connected outputs found but no connector_id (fallback 33)'
+                : 'No connected outputs found (fallback connector 33)';
+            fallbackOption.selected = true;
+            screenSelect.appendChild(fallbackOption);
         }
-    });
+
+        const customOption = document.createElement('option');
+        customOption.value = 'custom';
+        customOption.textContent = 'Custom connector id…';
+        screenSelect.appendChild(customOption);
+
+        refreshActiveConnectorBadge();
+        setStatus(`Outputs loaded: ${list.length} total, ${connected.length} connected, ${withIds.length} with connector IDs.`);
+    } catch (err) {
+        outputsDebug.textContent = `(failed to load outputs) ${err.message}`;
+        setStatus(`Error loading outputs: ${err.message}. Using fallback connector options.`);
+        refreshActiveConnectorBadge();
+    }
 }
 
-async function apply() {
-    const output = document.getElementById("output").value;
-    const color = document.getElementById("color").value;
+screenSelect.addEventListener('change', () => {
+    if (screenSelect.value !== 'custom') {
+        customConnectorInput.value = screenSelect.value;
+    }
+    refreshActiveConnectorBadge();
+});
 
-    await fetch("/api/pattern/solid", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            output: output,
-            color: color
-        })
-    });
+customConnectorInput.addEventListener('input', refreshActiveConnectorBadge);
 
-    updateStatus();
+async function takeControl() {
+    const connector_id = selectedConnectorId();
+    try {
+        const result = await postJson('/pattern/control', { action: 'take', connector_id });
+        const warning = result.warning ? ` Warning: ${result.warning}` : '';
+        setStatus(`Display control taken for connector ${connector_id}.${warning}`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
 }
 
-async function stop() {
-    await fetch("/api/pattern/stop", { method: "POST" });
-    updateStatus();
+async function releaseControl() {
+    const connector_id = selectedConnectorId();
+    try {
+        await postJson('/pattern/control', { action: 'release', connector_id });
+        setStatus(`Display control released for connector ${connector_id}.`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
 }
 
-async function updateStatus() {
-    const res = await fetch("/api/pattern/status");
-    const status = await res.json();
-    document.getElementById("status").textContent =
-        "Status:\n" + JSON.stringify(status, null, 2);
+async function startPattern() {
+    const connector_id = selectedConnectorId();
+    try {
+        const result = await postJson('/pattern/start', { connector_id });
+        const warning = result.warning ? ` Warning: ${result.warning}` : '';
+        setStatus(`Pattern started on connector ${connector_id}.${warning}`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
 }
 
+async function stopPattern() {
+    const connector_id = selectedConnectorId();
+    try {
+        await postJson('/pattern/stop', { connector_id });
+        setStatus(`Pattern stopped on connector ${connector_id}.`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
+}
+
+async function showColor() {
+    const connector_id = selectedConnectorId();
+    const color = document.getElementById('color_picker').value;
+
+    try {
+        const result = await postJson('/pattern/start', { connector_id, color, mode: 'solid' });
+        const warning = result.warning ? ` Warning: ${result.warning}` : '';
+        setStatus(`Requested colour ${color} on connector ${connector_id} via KMS process.${warning}`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
+}
+
+refreshActiveConnectorBadge();
 loadOutputs();
-updateStatus();
-setInterval(updateStatus, 1000);
 </script>
-
-</body>
-</html>
+{% endblock %}
