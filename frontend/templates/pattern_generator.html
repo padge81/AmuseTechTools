@@ -1,99 +1,154 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Pattern Generator (Test)</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            padding: 20px;
-            background: #111;
-            color: #eee;
-        }
-        select, button {
-            font-size: 16px;
-            padding: 6px;
-            margin: 5px 0;
-        }
-        #status {
-            margin-top: 20px;
-            background: #222;
-            padding: 10px;
-            white-space: pre;
-            font-family: monospace;
-        }
-    </style>
-</head>
-<body>
+{% extends "base.html" %}
+{% block content %}
+<div class="container" style="max-width: 900px;">
+    <h1>Pattern Generator</h1>
+    <p style="opacity:0.85;">A) Select display. B) Take/Release selected display. C) Full-screen solid colour. D) Colour bars.</p>
 
-<h1>Pattern Generator (Test)</h1>
+    <label for="screen_select">Available Displays</label>
+    <select id="screen_select" style="display:block; margin:8px 0 16px; padding:8px; width:420px;"></select>
 
-<label>Output:</label><br>
-<select id="output"></select><br>
+    <div style="display:flex; gap:8px; flex-wrap: wrap; margin-bottom:16px;">
+        <button onclick="takeControl()">Take Selected Display</button>
+        <button onclick="releaseControl()">Release Selected Display</button>
+        <button onclick="reloadOutputs()">Reload Displays</button>
+    </div>
 
-<label>Solid Color:</label><br>
-<select id="color">
-    <option value="red">Red</option>
-    <option value="green">Green</option>
-    <option value="blue">Blue</option>
-    <option value="white">White</option>
-    <option value="black">Black</option>
-</select><br>
+    <label for="color_picker">Solid Colour</label>
+    <input id="color_picker" type="color" value="#ffffff" style="display:block; width:120px; height:48px; border:none; padding:0; background:none; margin:8px 0;" />
 
-<button onclick="apply()">Apply</button>
-<button onclick="stop()">Stop</button>
+    <div style="display:flex; gap:8px; flex-wrap: wrap; margin-bottom:16px;">
+        <button onclick="startSolidColor()">Start Full Screen Colour</button>
+        <button onclick="startColorBars()">Start Colour Bars</button>
+        <button onclick="stopPattern()">Stop Pattern On Selected Display</button>
+    </div>
 
-<div id="status">Status: (loading)</div>
+    <pre id="status" style="margin-top: 8px; background:#111; color:#eee; padding: 12px; border-radius: 6px; min-height: 52px;">Loading capabilities and displays...</pre>
+    <pre id="outputs_debug" style="margin-top: 8px; background:#0b1220; color:#d1d5db; padding: 12px; border-radius: 6px; min-height: 80px;">(outputs)</pre>
+</div>
 
 <script>
-async function loadOutputs() {
-    const res = await fetch("/api/pattern/outputs");
-    const outputs = await res.json();
+const screenSelect = document.getElementById('screen_select');
 
-    const sel = document.getElementById("output");
-    sel.innerHTML = "";
+function setStatus(message) {
+    document.getElementById('status').textContent = message;
+}
 
-    outputs.forEach(o => {
-        if (o.connected) {
-            const opt = document.createElement("option");
-            opt.value = o.name;
-            opt.textContent = o.name;
-            sel.appendChild(opt);
+function selectedConnectorId() {
+    return Number(screenSelect.value);
+}
+
+async function postJson(url, payload = {}) {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(body.error || `Request failed (${response.status})`);
+    }
+    return body;
+}
+
+async function loadCapabilities() {
+    try {
+        const response = await fetch('/pattern/capabilities');
+        const caps = await response.json();
+        const scope = caps.display_control_scope || 'unknown';
+        const globalMode = caps.force_global_drm_control ? 'ON' : 'OFF';
+        setStatus(`Capabilities: scope=${scope}, force_global_drm_control=${globalMode}.`);
+    } catch (err) {
+        setStatus(`Could not load capabilities: ${err.message}`);
+    }
+}
+
+async function reloadOutputs() {
+    try {
+        const response = await fetch('/pattern/outputs');
+        const outputs = await response.json();
+        const list = Array.isArray(outputs) ? outputs : [];
+
+        document.getElementById('outputs_debug').textContent = JSON.stringify(list, null, 2);
+        screenSelect.innerHTML = '';
+
+        const connected = list.filter(o => o.connected && o.connector_id !== null);
+        connected.forEach((output, index) => {
+            const option = document.createElement('option');
+            option.value = output.connector_id;
+            option.textContent = `${output.name} (connector ${output.connector_id})`;
+            if (index === 0) option.selected = true;
+            screenSelect.appendChild(option);
+        });
+
+        if (connected.length === 0) {
+            const option = document.createElement('option');
+            option.value = '33';
+            option.textContent = 'No connected display with connector id found (fallback 33)';
+            option.selected = true;
+            screenSelect.appendChild(option);
         }
-    });
+
+        setStatus(`Displays loaded. Connected selectable displays: ${connected.length}.`);
+    } catch (err) {
+        setStatus(`Error loading displays: ${err.message}`);
+    }
 }
 
-async function apply() {
-    const output = document.getElementById("output").value;
-    const color = document.getElementById("color").value;
-
-    await fetch("/api/pattern/solid", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            output: output,
-            color: color
-        })
-    });
-
-    updateStatus();
+async function takeControl() {
+    const connector_id = selectedConnectorId();
+    try {
+        const result = await postJson('/pattern/control', { action: 'take', connector_id });
+        setStatus(`${result.message} Owned connectors: ${result.owned_connectors.join(', ') || '(none)'}`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
 }
 
-async function stop() {
-    await fetch("/api/pattern/stop", { method: "POST" });
-    updateStatus();
+async function releaseControl() {
+    const connector_id = selectedConnectorId();
+    try {
+        const result = await postJson('/pattern/control', { action: 'release', connector_id });
+        setStatus(`${result.message} Owned connectors: ${result.owned_connectors.join(', ') || '(none)'}`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
 }
 
-async function updateStatus() {
-    const res = await fetch("/api/pattern/status");
-    const status = await res.json();
-    document.getElementById("status").textContent =
-        "Status:\n" + JSON.stringify(status, null, 2);
+async function startSolidColor() {
+    const connector_id = selectedConnectorId();
+    const color = document.getElementById('color_picker').value;
+
+    try {
+        await postJson('/pattern/start', { connector_id, mode: 'solid', color });
+        setStatus(`Started full-screen colour ${color} on connector ${connector_id}.`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
 }
 
-loadOutputs();
-updateStatus();
-setInterval(updateStatus, 1000);
+async function startColorBars() {
+    const connector_id = selectedConnectorId();
+
+    try {
+        await postJson('/pattern/start', { connector_id, mode: 'colorbars' });
+        setStatus(`Started colour bars on connector ${connector_id}.`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
+}
+
+async function stopPattern() {
+    const connector_id = selectedConnectorId();
+
+    try {
+        await postJson('/pattern/stop', { connector_id });
+        setStatus(`Stopped pattern on connector ${connector_id}.`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
+}
+
+loadCapabilities().then(reloadOutputs);
 </script>
-
-</body>
-</html>
+{% endblock %}
