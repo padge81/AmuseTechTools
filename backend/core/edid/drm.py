@@ -37,8 +37,17 @@ def list_connectors():
         edid_file = card / "edid"
         edid_present = edid_file.exists() and edid_file.stat().st_size > 0
 
+        connector_id_file = card / "connector_id"
+        connector_id = None
+        if connector_id_file.exists():
+            try:
+                connector_id = int(connector_id_file.read_text().strip())
+            except ValueError:
+                connector_id = None
+
         connectors.append({
             "name": name,
+            "connector_id": connector_id,
             "connected": status == "connected",
             "sysfs_path": str(card),
             "edid_present": edid_present,
