@@ -6,7 +6,7 @@ from flask import Blueprint, request, jsonify
 from backend.core.edid.drm import list_connectors
 from backend.core.pattern.service import pattern_worker
 
-pattern_bp = Blueprint("pattern", __name__, url_prefix="/pattern")
+pattern_bp = Blueprint("pattern_api", __name__, url_prefix="/pattern")
 _DISPLAY_MANAGER_SERVICE = os.environ.get("PATTERN_DISPLAY_MANAGER_SERVICE", "lightdm")
 
 
@@ -25,22 +25,6 @@ def _set_display_manager(enabled):
     action = "start" if enabled else "stop"
     result = subprocess.run(["systemctl", action, _DISPLAY_MANAGER_SERVICE], check=False)
     return result.returncode == 0
-
-
-@pattern_bp.route("/outputs", methods=["GET"])
-def outputs():
-    return jsonify(list_connectors())
-
-
-def _parse_connector_id(data, default=None):
-    value = data.get("connector_id", default)
-    if value is None:
-        return None, jsonify({"ok": False, "error": "connector_id is required"}), 400
-
-    try:
-        return int(value), None, None
-    except (TypeError, ValueError):
-        return None, jsonify({"ok": False, "error": "connector_id must be an integer"}), 400
 
 
 @pattern_bp.route("/outputs", methods=["GET"])
