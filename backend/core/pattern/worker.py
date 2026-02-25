@@ -1,3 +1,4 @@
+import shutil
 import signal
 import subprocess
 import threading
@@ -7,35 +8,41 @@ class PatternWorker:
     def __init__(self):
         self._lock = threading.Lock()
         self._procs = {}
-        self._supports_connector_arg = None
+        self._has_gstreamer = None
 
-    def start_kmscube(self, connector_id=33):
-        with self._lock:
-            self._stop_locked(connector_id)
+    def start_solid_color(self, connector_id, color_hex="#ffffff"):
+        color = self._hex_to_uint32(color_hex)
+        cmd = [
+            "gst-launch-1.0",
+            "-q",
+            "videotestsrc",
+            "is-live=true",
+            "pattern=solid-color",
+            f"foreground-color={color}",
+            "!",
+            "video/x-raw,framerate=30/1",
+            "!",
+            "kmssink",
+            f"connector-id={connector_id}",
+            "sync=false",
+        ]
+        self._start(connector_id, cmd)
 
-            cmd = self._kmscube_command(connector_id)
-            self._preflight(cmd)
-
-            try:
-                self._procs[connector_id] = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            except FileNotFoundError as exc:
-                raise RuntimeError("kmscube is not installed or not in PATH") from exc
-
-            return {
-                "connector_id": connector_id,
-                "command": cmd,
-                "connector_selection_supported": self._supports_connector_arg,
-            }
-
-    def connector_selection_supported(self):
-        with self._lock:
-            if self._supports_connector_arg is None:
-                self._supports_connector_arg = self._detect_connector_arg_support()
-            return self._supports_connector_arg
+    def start_colorbars(self, connector_id):
+        cmd = [
+            "gst-launch-1.0",
+            "-q",
+            "videotestsrc",
+            "is-live=true",
+            "pattern=smpte",
+            "!",
+            "video/x-raw,framerate=30/1",
+            "!",
+            "kmssink",
+            f"connector-id={connector_id}",
+            "sync=false",
+        ]
+        self._start(connector_id, cmd)
 
     def stop(self, connector_id=None):
         with self._lock:
@@ -43,61 +50,39 @@ class PatternWorker:
                 for cid in list(self._procs):
                     self._stop_locked(cid)
                 return
-
             self._stop_locked(connector_id)
 
-    def _kmscube_command(self, connector_id):
-        if self._supports_connector_arg is None:
-            self._supports_connector_arg = self._detect_connector_arg_support()
+    def _start(self, connector_id, cmd):
+        with self._lock:
+            self._ensure_gstreamer_available()
+            self._stop_locked(connector_id)
+            try:
+                self._procs[connector_id] = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except FileNotFoundError as exc:
+                raise RuntimeError("gst-launch-1.0 is not installed or not in PATH") from exc
 
-        if self._supports_connector_arg:
-            return ["kmscube", "-n", str(connector_id)]
-
-        return ["kmscube"]
-
-    def _preflight(self, cmd):
-        try:
-            result = subprocess.run(
-                cmd + ["-c", "1"],
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=8,
-            )
-        except FileNotFoundError as exc:
-            raise RuntimeError("kmscube is not installed or not in PATH") from exc
-        except subprocess.TimeoutExpired as exc:
-            raise RuntimeError("kmscube preflight timed out") from exc
-
-        if result.returncode == 0:
-            return
-
-        output = ((result.stdout or "") + "\n" + (result.stderr or "")).strip()
-        lowered = output.lower()
-
-        if "permission denied" in lowered or "failed to set mode" in lowered:
-            raise RuntimeError(
-                "kmscube failed to acquire DRM mode-setting access (permission denied). "
-                "Ensure display manager/compositor is stopped and user has DRM permissions."
-            )
-
-        first_line = output.splitlines()[0] if output else f"exit code {result.returncode}"
-        raise RuntimeError(f"kmscube preflight failed: {first_line}")
+    def _ensure_gstreamer_available(self):
+        if self._has_gstreamer is None:
+            self._has_gstreamer = bool(shutil.which("gst-launch-1.0"))
+        if not self._has_gstreamer:
+            raise RuntimeError("GStreamer is not available (gst-launch-1.0 not found)")
 
     @staticmethod
-    def _detect_connector_arg_support():
+    def _hex_to_uint32(color_hex):
+        color = (color_hex or "#ffffff").strip().lstrip("#")
+        if len(color) != 6:
+            color = "ffffff"
         try:
-            help_result = subprocess.run(
-                ["kmscube", "--help"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-        except FileNotFoundError:
-            return False
+            rgb = int(color, 16)
+        except ValueError:
+            rgb = 0xFFFFFF
 
-        combined = (help_result.stdout or "") + (help_result.stderr or "")
-        return "-n" in combined or "--connector" in combined
+        # ARGB expected by videotestsrc foreground-color
+        return (0xFF << 24) | rgb
 
     def _stop_locked(self, connector_id):
         proc = self._procs.get(connector_id)
