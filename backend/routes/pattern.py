@@ -9,6 +9,9 @@ from backend.core.pattern.service import pattern_worker
 
 pattern_bp = Blueprint("pattern_api", __name__, url_prefix="/pattern")
 _DISPLAY_MANAGER_SERVICE = os.environ.get("PATTERN_DISPLAY_MANAGER_SERVICE", "lightdm")
+# Optional fallback for environments that require DRM master handover.
+_FORCE_GLOBAL_DRM_CONTROL = os.environ.get("PATTERN_FORCE_GLOBAL_DRM_CONTROL", "0") == "1"
+
 _ownership_lock = threading.Lock()
 _owned_connectors = set()
 _display_manager_stopped = False
@@ -31,6 +34,40 @@ def _set_display_manager(enabled):
     return result.returncode == 0
 
 
+def _ensure_global_drm_control():
+    global _display_manager_stopped
+
+    if not _FORCE_GLOBAL_DRM_CONTROL:
+        return True, None
+
+    if _display_manager_stopped:
+        return True, None
+
+    dm_ok = _set_display_manager(enabled=False)
+    if not dm_ok:
+        return False, f"failed to stop display manager service '{_DISPLAY_MANAGER_SERVICE}'"
+
+    _display_manager_stopped = True
+    return True, None
+
+
+def _maybe_release_global_drm_control():
+    global _display_manager_stopped
+
+    if not _FORCE_GLOBAL_DRM_CONTROL:
+        return True, None
+
+    if not _display_manager_stopped or _owned_connectors:
+        return True, None
+
+    dm_ok = _set_display_manager(enabled=True)
+    if not dm_ok:
+        return False, f"failed to start display manager service '{_DISPLAY_MANAGER_SERVICE}'"
+
+    _display_manager_stopped = False
+    return True, None
+
+
 @pattern_bp.route("/outputs", methods=["GET"])
 def outputs():
     return jsonify(list_connectors())
@@ -40,15 +77,14 @@ def outputs():
 def capabilities():
     return jsonify({
         "renderer": "gstreamer-kmssink",
-        "display_control_scope": "global-drm-master",
+        "display_control_scope": "per-connector-reservation",
         "supports_connector_selection": True,
+        "force_global_drm_control": _FORCE_GLOBAL_DRM_CONTROL,
     })
 
 
 @pattern_bp.route("/control", methods=["POST"])
 def control():
-    global _display_manager_stopped
-
     data = request.get_json(silent=True) or {}
     action = data.get("action")
 
@@ -61,42 +97,28 @@ def control():
 
     with _ownership_lock:
         if action == "take":
-            if not _display_manager_stopped:
-                dm_ok = _set_display_manager(enabled=False)
-                if not dm_ok:
-                    return jsonify({
-                        "ok": False,
-                        "error": f"failed to stop display manager service '{_DISPLAY_MANAGER_SERVICE}'",
-                    }), 500
-                _display_manager_stopped = True
-
             _owned_connectors.add(connector_id)
             return jsonify({
                 "ok": True,
                 "action": action,
                 "connector_id": connector_id,
                 "owned_connectors": sorted(_owned_connectors),
-                "message": "Display control taken for connector (display manager stopped globally for DRM master).",
+                "message": "Connector reserved for pattern output.",
             })
 
         pattern_worker.stop(connector_id)
         _owned_connectors.discard(connector_id)
 
-        if _display_manager_stopped and not _owned_connectors:
-            dm_ok = _set_display_manager(enabled=True)
-            if not dm_ok:
-                return jsonify({
-                    "ok": False,
-                    "error": f"failed to start display manager service '{_DISPLAY_MANAGER_SERVICE}'",
-                }), 500
-            _display_manager_stopped = False
+        ok, err = _maybe_release_global_drm_control()
+        if not ok:
+            return jsonify({"ok": False, "error": err}), 500
 
         return jsonify({
             "ok": True,
             "action": action,
             "connector_id": connector_id,
             "owned_connectors": sorted(_owned_connectors),
-            "message": "Display released for connector.",
+            "message": "Connector released.",
         })
 
 
@@ -117,6 +139,10 @@ def start():
                 "error": "connector is not taken. Use Take Display Control first.",
             }), 409
 
+        ok, err = _ensure_global_drm_control()
+        if not ok:
+            return jsonify({"ok": False, "error": err}), 500
+
     try:
         if mode == "solid":
             pattern_worker.start_solid_color(connector_id, data.get("color", "#ffffff"))
@@ -125,7 +151,12 @@ def start():
     except RuntimeError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 
-    return jsonify({"ok": True, "connector_id": connector_id, "mode": mode})
+    return jsonify({
+        "ok": True,
+        "connector_id": connector_id,
+        "mode": mode,
+        "global_drm_control": _FORCE_GLOBAL_DRM_CONTROL,
+    })
 
 
 @pattern_bp.route("/stop", methods=["POST"])

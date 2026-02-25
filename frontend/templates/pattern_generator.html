@@ -22,7 +22,7 @@
         <button onclick="stopPattern()">Stop Pattern On Selected Display</button>
     </div>
 
-    <pre id="status" style="margin-top: 8px; background:#111; color:#eee; padding: 12px; border-radius: 6px; min-height: 52px;">Loading...</pre>
+    <pre id="status" style="margin-top: 8px; background:#111; color:#eee; padding: 12px; border-radius: 6px; min-height: 52px;">Loading capabilities and displays...</pre>
     <pre id="outputs_debug" style="margin-top: 8px; background:#0b1220; color:#d1d5db; padding: 12px; border-radius: 6px; min-height: 80px;">(outputs)</pre>
 </div>
 
@@ -49,6 +49,18 @@ async function postJson(url, payload = {}) {
         throw new Error(body.error || `Request failed (${response.status})`);
     }
     return body;
+}
+
+async function loadCapabilities() {
+    try {
+        const response = await fetch('/pattern/capabilities');
+        const caps = await response.json();
+        const scope = caps.display_control_scope || 'unknown';
+        const globalMode = caps.force_global_drm_control ? 'ON' : 'OFF';
+        setStatus(`Capabilities: scope=${scope}, force_global_drm_control=${globalMode}.`);
+    } catch (err) {
+        setStatus(`Could not load capabilities: ${err.message}`);
+    }
 }
 
 async function reloadOutputs() {
@@ -137,6 +149,6 @@ async function stopPattern() {
     }
 }
 
-reloadOutputs();
+loadCapabilities().then(reloadOutputs);
 </script>
 {% endblock %}
