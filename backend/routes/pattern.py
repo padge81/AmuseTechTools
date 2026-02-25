@@ -44,10 +44,10 @@ def _set_display_manager(enabled):
     return result.returncode == 0
 
 
-def _ensure_global_drm_control():
+def _ensure_global_drm_control(requested=False):
     global _display_manager_stopped
 
-    if not _FORCE_GLOBAL_DRM_CONTROL:
+    if not (_FORCE_GLOBAL_DRM_CONTROL or requested):
         return True, None
 
     if _display_manager_stopped:
@@ -61,10 +61,10 @@ def _ensure_global_drm_control():
     return True, None
 
 
-def _maybe_release_global_drm_control():
+def _maybe_release_global_drm_control(requested=False):
     global _display_manager_stopped
 
-    if not _FORCE_GLOBAL_DRM_CONTROL:
+    if not (_FORCE_GLOBAL_DRM_CONTROL or requested):
         return True, None
 
     if not _display_manager_stopped or _owned_connectors:
@@ -109,7 +109,7 @@ def control():
     with _ownership_lock:
         if action == "take":
             if use_global_drm_control:
-                ok, err = _ensure_global_drm_control()
+                ok, err = _ensure_global_drm_control(requested=True)
                 if not ok:
                     return jsonify({"ok": False, "error": err}), 500
 
@@ -130,7 +130,7 @@ def control():
 
         ok, err = (True, None)
         if use_global_drm_control or _FORCE_GLOBAL_DRM_CONTROL:
-            ok, err = _maybe_release_global_drm_control()
+            ok, err = _maybe_release_global_drm_control(requested=use_global_drm_control)
         if not ok:
             return jsonify({"ok": False, "error": err}), 500
 
@@ -161,7 +161,7 @@ def start():
                 "error": "connector is not taken. Use Take Display Control first.",
             }), 409
 
-        ok, err = _ensure_global_drm_control()
+        ok, err = _ensure_global_drm_control(requested=False)
         if not ok:
             return jsonify({"ok": False, "error": err}), 500
 
