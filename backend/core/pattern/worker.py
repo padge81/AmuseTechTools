@@ -21,6 +21,10 @@ class PatternWorker:
                 return
 
             self._stop_locked(connector_id)
+        self.stop()
+
+        with self._lock:
+            self._proc = subprocess.Popen(["kmscube", "-n", str(connector_id)])
 
     def _stop_locked(self, connector_id):
         proc = self._procs.get(connector_id)

@@ -32,6 +32,15 @@ def control():
         pattern_worker.start_kmscube(connector_id)
     else:
         pattern_worker.stop(connector_id)
+    action = (request.get_json(silent=True) or {}).get("action")
+
+    if action == "take":
+        subprocess.run(["systemctl", "stop", "lightdm"], check=False)
+    elif action == "release":
+        pattern_worker.stop()
+        subprocess.run(["systemctl", "start", "lightdm"], check=False)
+    else:
+        return jsonify({"ok": False, "error": "invalid action"}), 400
 
     return jsonify({"ok": True, "connector_id": connector_id, "action": action})
 
@@ -54,6 +63,9 @@ def start():
     if mode == "solid" and color:
         response["note"] = "kmscube started for selected connector (solid colour rendering depends on kmscube build/options)"
     return jsonify(response)
+
+    pattern_worker.start_kmscube(connector_id)
+    return jsonify({"ok": True, "connector_id": connector_id})
 
 
 @pattern_bp.route("/stop", methods=["POST"])
