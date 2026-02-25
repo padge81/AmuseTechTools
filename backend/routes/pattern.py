@@ -17,6 +17,16 @@ _owned_connectors = set()
 _display_manager_stopped = False
 
 
+def _global_drm_requested(data):
+    if _FORCE_GLOBAL_DRM_CONTROL:
+        return True
+
+    value = data.get("global_drm_control", False)
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
+
+
 def _parse_connector_id(data, default=None):
     value = data.get("connector_id", default)
     if value is None:
@@ -87,6 +97,7 @@ def capabilities():
 def control():
     data = request.get_json(silent=True) or {}
     action = data.get("action")
+    use_global_drm_control = _global_drm_requested(data)
 
     if action not in {"take", "release"}:
         return jsonify({"ok": False, "error": "invalid action"}), 400
@@ -97,19 +108,29 @@ def control():
 
     with _ownership_lock:
         if action == "take":
+            if use_global_drm_control:
+                ok, err = _ensure_global_drm_control()
+                if not ok:
+                    return jsonify({"ok": False, "error": err}), 500
+
             _owned_connectors.add(connector_id)
             return jsonify({
                 "ok": True,
                 "action": action,
                 "connector_id": connector_id,
                 "owned_connectors": sorted(_owned_connectors),
-                "message": "Connector reserved for pattern output.",
+                "global_drm_control": use_global_drm_control,
+                "message": "Connector reserved for pattern output."
+                if not use_global_drm_control
+                else "Connector reserved and global DRM control acquired.",
             })
 
         pattern_worker.stop(connector_id)
         _owned_connectors.discard(connector_id)
 
-        ok, err = _maybe_release_global_drm_control()
+        ok, err = (True, None)
+        if use_global_drm_control or _FORCE_GLOBAL_DRM_CONTROL:
+            ok, err = _maybe_release_global_drm_control()
         if not ok:
             return jsonify({"ok": False, "error": err}), 500
 
@@ -118,6 +139,7 @@ def control():
             "action": action,
             "connector_id": connector_id,
             "owned_connectors": sorted(_owned_connectors),
+            "global_drm_control": use_global_drm_control or _FORCE_GLOBAL_DRM_CONTROL,
             "message": "Connector released.",
         })
 

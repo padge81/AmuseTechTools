@@ -13,6 +13,11 @@
         <button onclick="reloadOutputs()">Reload Displays</button>
     </div>
 
+    <label style="display:block; margin: 0 0 16px;">
+        <input id="global_drm_toggle" type="checkbox" />
+        Use global DRM control handover (stop display manager) for take/release
+    </label>
+
     <label for="color_picker">Solid Colour</label>
     <input id="color_picker" type="color" value="#ffffff" style="display:block; width:120px; height:48px; border:none; padding:0; background:none; margin:8px 0;" />
 
@@ -57,10 +62,18 @@ async function loadCapabilities() {
         const caps = await response.json();
         const scope = caps.display_control_scope || 'unknown';
         const globalMode = caps.force_global_drm_control ? 'ON' : 'OFF';
+        const toggle = document.getElementById('global_drm_toggle');
+        toggle.checked = !!caps.force_global_drm_control;
+        toggle.disabled = !!caps.force_global_drm_control;
         setStatus(`Capabilities: scope=${scope}, force_global_drm_control=${globalMode}.`);
     } catch (err) {
         setStatus(`Could not load capabilities: ${err.message}`);
     }
+}
+
+function useGlobalDrmControl() {
+    const toggle = document.getElementById('global_drm_toggle');
+    return !!(toggle && toggle.checked);
 }
 
 async function reloadOutputs() {
@@ -98,7 +111,11 @@ async function reloadOutputs() {
 async function takeControl() {
     const connector_id = selectedConnectorId();
     try {
-        const result = await postJson('/pattern/control', { action: 'take', connector_id });
+        const result = await postJson('/pattern/control', {
+            action: 'take',
+            connector_id,
+            global_drm_control: useGlobalDrmControl(),
+        });
         setStatus(`${result.message} Owned connectors: ${result.owned_connectors.join(', ') || '(none)'}`);
     } catch (err) {
         setStatus(`Error: ${err.message}`);
@@ -108,7 +125,11 @@ async function takeControl() {
 async function releaseControl() {
     const connector_id = selectedConnectorId();
     try {
-        const result = await postJson('/pattern/control', { action: 'release', connector_id });
+        const result = await postJson('/pattern/control', {
+            action: 'release',
+            connector_id,
+            global_drm_control: useGlobalDrmControl(),
+        });
         setStatus(`${result.message} Owned connectors: ${result.owned_connectors.join(', ') || '(none)'}`);
     } catch (err) {
         setStatus(`Error: ${err.message}`);
