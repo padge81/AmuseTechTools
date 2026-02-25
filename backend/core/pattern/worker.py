@@ -31,6 +31,12 @@ class PatternWorker:
                 "connector_selection_supported": self._supports_connector_arg,
             }
 
+    def connector_selection_supported(self):
+        with self._lock:
+            if self._supports_connector_arg is None:
+                self._supports_connector_arg = self._detect_connector_arg_support()
+            return self._supports_connector_arg
+
     def stop(self, connector_id=None):
         with self._lock:
             if connector_id is None:

@@ -3,6 +3,7 @@
 <div class="container" style="max-width: 860px;">
     <h1>Pattern Generator</h1>
     <p style="margin: 0 0 12px; opacity: 0.85;">Connector-aware KMS controls. Use <strong>Reload Outputs</strong> to confirm what the backend discovers.</p>
+    <div id="capability_notice" style="margin:0 0 12px; padding:10px; border-radius:6px; background:#3b1f1f; color:#ffd6d6; display:none;"></div>
 
     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;">
         <button onclick="loadOutputs()">Reload Outputs</button>
@@ -19,8 +20,8 @@
     <input id="custom_connector_id" type="number" min="0" value="33" style="display:block; margin: 8px 0 16px; padding: 8px; width: 220px;" />
 
     <div style="display:flex; gap:8px; flex-wrap: wrap; margin-bottom: 16px;">
-        <button onclick="takeControl()">Take Display Control</button>
-        <button onclick="releaseControl()">Release Display Control</button>
+        <button onclick="takeControl()">Take Display Control (Global)</button>
+        <button onclick="releaseControl()">Release Display Control (Global)</button>
         <button onclick="startPattern()">Start</button>
         <button onclick="stopPattern()">Stop</button>
     </div>
@@ -40,6 +41,8 @@ const screenSelect = document.getElementById('screen_select');
 const customConnectorInput = document.getElementById('custom_connector_id');
 const activeConnectorBadge = document.getElementById('active_connector_badge');
 const outputsDebug = document.getElementById('outputs_debug');
+const capabilityNotice = document.getElementById('capability_notice');
+let connectorSelectionSupported = true;
 
 function setStatus(message) {
     document.getElementById('status').textContent = message;
@@ -69,6 +72,29 @@ async function postJson(url, payload = {}) {
         throw new Error(body.error || `Request failed (${response.status})`);
     }
     return body;
+}
+
+async function loadCapabilities() {
+    try {
+        const response = await fetch('/pattern/capabilities');
+        const data = await response.json();
+        connectorSelectionSupported = Boolean(data.connector_selection_supported);
+
+        if (!connectorSelectionSupported) {
+            capabilityNotice.style.display = 'block';
+            capabilityNotice.textContent = 'This kmscube build cannot target specific connectors. Screen select is disabled and output may appear on the default screen.';
+            screenSelect.disabled = true;
+            customConnectorInput.disabled = true;
+        } else {
+            capabilityNotice.style.display = 'none';
+            capabilityNotice.textContent = '';
+            screenSelect.disabled = false;
+            customConnectorInput.disabled = false;
+        }
+    } catch (err) {
+        capabilityNotice.style.display = 'block';
+        capabilityNotice.textContent = `Could not read capabilities: ${err.message}`;
+    }
 }
 
 async function loadOutputs() {
@@ -110,7 +136,7 @@ async function loadOutputs() {
         screenSelect.appendChild(customOption);
 
         refreshActiveConnectorBadge();
-        setStatus(`Outputs loaded: ${list.length} total, ${connected.length} connected, ${withIds.length} with connector IDs.`);
+        setStatus(`Outputs loaded: ${list.length} total, ${connected.length} connected, ${withIds.length} with connector IDs.${connectorSelectionSupported ? "" : " Connector-specific targeting not supported on this kmscube build."}`);
     } catch (err) {
         outputsDebug.textContent = `(failed to load outputs) ${err.message}`;
         setStatus(`Error loading outputs: ${err.message}. Using fallback connector options.`);
@@ -182,6 +208,6 @@ async function showColor() {
 }
 
 refreshActiveConnectorBadge();
-loadOutputs();
+loadCapabilities().then(loadOutputs);
 </script>
 {% endblock %}

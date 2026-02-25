@@ -32,6 +32,14 @@ def outputs():
     return jsonify(list_connectors())
 
 
+@pattern_bp.route("/capabilities", methods=["GET"])
+def capabilities():
+    return jsonify({
+        "connector_selection_supported": pattern_worker.connector_selection_supported(),
+        "display_control_scope": "global",
+    })
+
+
 @pattern_bp.route("/control", methods=["POST"])
 def control():
     data = request.get_json(silent=True) or {}
@@ -52,7 +60,7 @@ def control():
             "ok": True,
             "action": action,
             "display_manager": _DISPLAY_MANAGER_SERVICE,
-            "message": "Display manager stopped. You can now start a KMS pattern.",
+            "message": "Display manager stopped globally. You can now start a KMS pattern.",
         })
 
     # release
@@ -68,7 +76,7 @@ def control():
         "ok": True,
         "action": action,
         "display_manager": _DISPLAY_MANAGER_SERVICE,
-        "message": "Display manager started and pattern processes stopped.",
+        "message": "Display manager started globally and pattern processes stopped.",
     })
 
 
