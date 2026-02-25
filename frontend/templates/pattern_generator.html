@@ -130,9 +130,8 @@ customConnectorInput.addEventListener('input', refreshActiveConnectorBadge);
 async function takeControl() {
     const connector_id = selectedConnectorId();
     try {
-        const result = await postJson('/pattern/control', { action: 'take', connector_id });
-        const warning = result.warning ? ` Warning: ${result.warning}` : '';
-        setStatus(`Display control taken for connector ${connector_id}.${warning}`);
+        const result = await postJson('/pattern/control', { action: 'take' });
+        setStatus(result.message || 'Display control taken.');
     } catch (err) {
         setStatus(`Error: ${err.message}`);
     }
@@ -141,8 +140,8 @@ async function takeControl() {
 async function releaseControl() {
     const connector_id = selectedConnectorId();
     try {
-        await postJson('/pattern/control', { action: 'release', connector_id });
-        setStatus(`Display control released for connector ${connector_id}.`);
+        const result = await postJson('/pattern/control', { action: 'release' });
+        setStatus(result.message || 'Display control released.');
     } catch (err) {
         setStatus(`Error: ${err.message}`);
     }

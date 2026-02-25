@@ -1,9 +1,35 @@
+import os
+import subprocess
+
 from flask import Blueprint, request, jsonify
 
 from backend.core.edid.drm import list_connectors
 from backend.core.pattern.service import pattern_worker
 
 pattern_bp = Blueprint("pattern", __name__, url_prefix="/pattern")
+_DISPLAY_MANAGER_SERVICE = os.environ.get("PATTERN_DISPLAY_MANAGER_SERVICE", "lightdm")
+
+
+def _parse_connector_id(data, default=None):
+    value = data.get("connector_id", default)
+    if value is None:
+        return None, jsonify({"ok": False, "error": "connector_id is required"}), 400
+
+    try:
+        return int(value), None, None
+    except (TypeError, ValueError):
+        return None, jsonify({"ok": False, "error": "connector_id must be an integer"}), 400
+
+
+def _set_display_manager(enabled):
+    action = "start" if enabled else "stop"
+    result = subprocess.run(["systemctl", action, _DISPLAY_MANAGER_SERVICE], check=False)
+    return result.returncode == 0
+
+
+@pattern_bp.route("/outputs", methods=["GET"])
+def outputs():
+    return jsonify(list_connectors())
 
 
 def _parse_connector_id(data, default=None):
@@ -30,23 +56,36 @@ def control():
     if action not in {"take", "release"}:
         return jsonify({"ok": False, "error": "invalid action"}), 400
 
-    connector_id, error_response, code = _parse_connector_id(data)
-    if error_response:
-        return error_response, code
+    if action == "take":
+        dm_ok = _set_display_manager(enabled=False)
+        if not dm_ok:
+            return jsonify({
+                "ok": False,
+                "error": f"failed to stop display manager service '{_DISPLAY_MANAGER_SERVICE}'",
+            }), 500
 
-    try:
-        if action == "take":
-            start_meta = pattern_worker.start_kmscube(connector_id)
-        else:
-            pattern_worker.stop(connector_id)
-            start_meta = None
-    except RuntimeError as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        return jsonify({
+            "ok": True,
+            "action": action,
+            "display_manager": _DISPLAY_MANAGER_SERVICE,
+            "message": "Display manager stopped. You can now start a KMS pattern.",
+        })
 
-    response = {"ok": True, "connector_id": connector_id, "action": action}
-    if action == "take" and start_meta and not start_meta["connector_selection_supported"]:
-        response["warning"] = "This kmscube build does not support connector selection; pattern may appear on the default connector."
-    return jsonify(response)
+    # release
+    pattern_worker.stop()
+    dm_ok = _set_display_manager(enabled=True)
+    if not dm_ok:
+        return jsonify({
+            "ok": False,
+            "error": f"failed to start display manager service '{_DISPLAY_MANAGER_SERVICE}'",
+        }), 500
+
+    return jsonify({
+        "ok": True,
+        "action": action,
+        "display_manager": _DISPLAY_MANAGER_SERVICE,
+        "message": "Display manager started and pattern processes stopped.",
+    })
 
 
 @pattern_bp.route("/start", methods=["POST"])
