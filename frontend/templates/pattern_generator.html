@@ -1,99 +1,131 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Pattern Generator (Test)</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            padding: 20px;
-            background: #111;
-            color: #eee;
-        }
-        select, button {
-            font-size: 16px;
-            padding: 6px;
-            margin: 5px 0;
-        }
-        #status {
-            margin-top: 20px;
-            background: #222;
-            padding: 10px;
-            white-space: pre;
-            font-family: monospace;
-        }
-    </style>
-</head>
-<body>
+{% extends "base.html" %}
+{% block content %}
+<div class="container" style="max-width: 760px;">
+    <h1>Pattern Generator</h1>
 
-<h1>Pattern Generator (Test)</h1>
+    <label for="screen_select">Screen</label>
+    <select id="screen_select" style="display:block; margin: 8px 0 16px; padding: 8px; width: 320px;"></select>
 
-<label>Output:</label><br>
-<select id="output"></select><br>
+    <div style="display:flex; gap:8px; flex-wrap: wrap; margin-bottom: 16px;">
+        <button onclick="takeControl()">Take Display Control</button>
+        <button onclick="releaseControl()">Release Display Control</button>
+        <button onclick="startPattern()">Start</button>
+        <button onclick="stopPattern()">Stop</button>
+    </div>
 
-<label>Solid Color:</label><br>
-<select id="color">
-    <option value="red">Red</option>
-    <option value="green">Green</option>
-    <option value="blue">Blue</option>
-    <option value="white">White</option>
-    <option value="black">Black</option>
-</select><br>
+    <label for="color_picker">Colour</label>
+    <input id="color_picker" type="color" value="#ffffff" style="display:block; width:120px; height:48px; border:none; padding:0; background:none; margin:8px 0;" />
+    <button onclick="showColor()">Display Full Screen Colour (KMS)</button>
 
-<button onclick="apply()">Apply</button>
-<button onclick="stop()">Stop</button>
-
-<div id="status">Status: (loading)</div>
+    <pre id="status" style="margin-top: 16px; background:#111; color:#eee; padding: 12px; border-radius: 6px; min-height: 52px;">Loading outputs…</pre>
+</div>
 
 <script>
+const screenSelect = document.getElementById('screen_select');
+
+function setStatus(message) {
+    document.getElementById('status').textContent = message;
+}
+
+function selectedConnectorId() {
+    return Number(screenSelect.value);
+}
+
+async function postJson(url, payload = {}) {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(body.error || `Request failed (${response.status})`);
+    }
+    return body;
+}
+
 async function loadOutputs() {
-    const res = await fetch("/api/pattern/outputs");
-    const outputs = await res.json();
+    try {
+        const response = await fetch('/pattern/outputs');
+        const outputs = await response.json();
 
-    const sel = document.getElementById("output");
-    sel.innerHTML = "";
+        const usable = outputs.filter(o => o.connected && o.connector_id !== null);
+        screenSelect.innerHTML = '';
 
-    outputs.forEach(o => {
-        if (o.connected) {
-            const opt = document.createElement("option");
-            opt.value = o.name;
-            opt.textContent = o.name;
-            sel.appendChild(opt);
+        usable.forEach((output, index) => {
+            const option = document.createElement('option');
+            option.value = output.connector_id;
+            option.textContent = `${output.name} (id ${output.connector_id})`;
+            if (index === 0) option.selected = true;
+            screenSelect.appendChild(option);
+        });
+
+        if (usable.length === 0) {
+            const option = document.createElement('option');
+            option.value = '33';
+            option.textContent = 'No connected outputs with connector_id found (fallback id 33)';
+            screenSelect.appendChild(option);
         }
-    });
+
+        setStatus('Outputs loaded.');
+    } catch (err) {
+        setStatus(`Error loading outputs: ${err.message}`);
+    }
 }
 
-async function apply() {
-    const output = document.getElementById("output").value;
-    const color = document.getElementById("color").value;
-
-    await fetch("/api/pattern/solid", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            output: output,
-            color: color
-        })
-    });
-
-    updateStatus();
+async function takeControl() {
+    const connector_id = selectedConnectorId();
+    try {
+        await postJson('/pattern/control', { action: 'take', connector_id });
+        setStatus(`Display control taken for connector ${connector_id}.`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
 }
 
-async function stop() {
-    await fetch("/api/pattern/stop", { method: "POST" });
-    updateStatus();
+async function releaseControl() {
+    const connector_id = selectedConnectorId();
+    try {
+        await postJson('/pattern/control', { action: 'release', connector_id });
+        setStatus(`Display control released for connector ${connector_id}.`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
 }
 
-async function updateStatus() {
-    const res = await fetch("/api/pattern/status");
-    const status = await res.json();
-    document.getElementById("status").textContent =
-        "Status:\n" + JSON.stringify(status, null, 2);
+async function startPattern() {
+    const connector_id = selectedConnectorId();
+    try {
+        await postJson('/pattern/start', { connector_id });
+        setStatus(`Pattern started on connector ${connector_id}.`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
+}
+
+async function stopPattern() {
+    const connector_id = selectedConnectorId();
+    try {
+        await postJson('/pattern/stop', { connector_id });
+        setStatus(`Pattern stopped on connector ${connector_id}.`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
+}
+
+async function showColor() {
+    const connector_id = selectedConnectorId();
+    const color = document.getElementById('color_picker').value;
+
+    try {
+        await postJson('/pattern/start', { connector_id, color, mode: 'solid' });
+        setStatus(`Requested colour ${color} on connector ${connector_id} via KMS process.`);
+    } catch (err) {
+        setStatus(`Error: ${err.message}`);
+    }
 }
 
 loadOutputs();
-updateStatus();
-setInterval(updateStatus, 1000);
 </script>
-
-</body>
-</html>
+{% endblock %}
