@@ -13,12 +13,10 @@ class PatternWorker:
     def start_kmscube(self, connector_id=33):
         print("🔥 start_kmscube CALLED", connector_id, flush=True)
 
-        with self._lock:
-            self.stop()
+        self.stop()
 
-            self._proc = subprocess.Popen(
-                ["kmscube", "-n", str(connector_id)]
-            )
+        with self._lock:
+            self._proc = subprocess.Popen(["kmscube", "-n", str(connector_id)])
 
     def stop(self):
         with self._lock:
