@@ -1,30 +1,40 @@
-# backend/core/pattern/worker.py
-
-import subprocess
 import signal
+import subprocess
 import threading
 
 
 class PatternWorker:
     def __init__(self):
         self._lock = threading.Lock()
-        self._proc = None
+        self._procs = {}
 
     def start_kmscube(self, connector_id=33):
-        print("🔥 start_kmscube CALLED", connector_id, flush=True)
+        with self._lock:
+            self._stop_locked(connector_id)
+            self._procs[connector_id] = subprocess.Popen(["kmscube", "-n", str(connector_id)])
 
+    def stop(self, connector_id=None):
+        with self._lock:
+            if connector_id is None:
+                for cid in list(self._procs):
+                    self._stop_locked(cid)
+                return
+
+            self._stop_locked(connector_id)
         self.stop()
 
         with self._lock:
             self._proc = subprocess.Popen(["kmscube", "-n", str(connector_id)])
 
-    def stop(self):
-        with self._lock:
-            if self._proc:
-                print("[pattern] stopping current pattern", flush=True)
-                self._proc.send_signal(signal.SIGINT)
-                try:
-                    self._proc.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    self._proc.kill()
-                self._proc = None
+    def _stop_locked(self, connector_id):
+        proc = self._procs.get(connector_id)
+        if not proc:
+            return
+
+        proc.send_signal(signal.SIGINT)
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        finally:
+            self._procs.pop(connector_id, None)
