@@ -32,6 +32,22 @@ def outputs():
     return jsonify(list_connectors())
 
 
+def _parse_connector_id(data, default=None):
+    value = data.get("connector_id", default)
+    if value is None:
+        return None, jsonify({"ok": False, "error": "connector_id is required"}), 400
+
+    try:
+        return int(value), None, None
+    except (TypeError, ValueError):
+        return None, jsonify({"ok": False, "error": "connector_id must be an integer"}), 400
+
+
+@pattern_bp.route("/outputs", methods=["GET"])
+def outputs():
+    return jsonify(list_connectors())
+
+
 @pattern_bp.route("/control", methods=["POST"])
 def control():
     data = request.get_json(silent=True) or {}
