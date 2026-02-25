@@ -1,10 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container" style="max-width: 760px;">
+<div class="container" style="max-width: 860px;">
     <h1>Pattern Generator</h1>
+    <p style="margin: 0 0 12px; opacity: 0.85;">Connector-aware KMS controls. Use <strong>Reload Outputs</strong> to confirm what the backend discovers.</p>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;">
+        <button onclick="loadOutputs()">Reload Outputs</button>
+        <span id="active_connector_badge" style="padding:4px 10px; border-radius:999px; background:#1f2937; color:#f3f4f6; font-size:13px;">Active connector: 33</span>
+    </div>
 
     <label for="screen_select">Screen</label>
-    <select id="screen_select" style="display:block; margin: 8px 0 16px; padding: 8px; width: 320px;"></select>
+    <select id="screen_select" style="display:block; margin: 8px 0 8px; padding: 8px; width: 360px;">
+        <option value="33" selected>Fallback connector (33)</option>
+        <option value="custom">Custom connector id…</option>
+    </select>
+
+    <label for="custom_connector_id">Custom connector id</label>
+    <input id="custom_connector_id" type="number" min="0" value="33" style="display:block; margin: 8px 0 16px; padding: 8px; width: 220px;" />
 
     <div style="display:flex; gap:8px; flex-wrap: wrap; margin-bottom: 16px;">
         <button onclick="takeControl()">Take Display Control</button>
@@ -18,59 +30,32 @@
     <button onclick="showColor()">Display Full Screen Colour (KMS)</button>
 
     <pre id="status" style="margin-top: 16px; background:#111; color:#eee; padding: 12px; border-radius: 6px; min-height: 52px;">Loading outputs…</pre>
+
+    <h3 style="margin:16px 0 8px;">Discovered Outputs (debug)</h3>
+    <pre id="outputs_debug" style="margin-top: 0; background:#0b1220; color:#d1d5db; padding: 12px; border-radius: 6px; min-height: 80px;">(not loaded)</pre>
 </div>
 
 <script>
 const screenSelect = document.getElementById('screen_select');
+const customConnectorInput = document.getElementById('custom_connector_id');
+const activeConnectorBadge = document.getElementById('active_connector_badge');
+const outputsDebug = document.getElementById('outputs_debug');
 
 function setStatus(message) {
     document.getElementById('status').textContent = message;
 }
 
 function selectedConnectorId() {
+    if (screenSelect.value === 'custom') {
+        return Number(customConnectorInput.value || 33);
+    }
+
     return Number(screenSelect.value);
 }
-    <label for="screen_select">Screen (Connector ID)</label>
-    <select id="screen_select" style="display:block; margin: 8px 0 8px; padding: 8px; width: 260px;">
-        <option value="31">Connector 31</option>
-        <option value="32">Connector 32</option>
-        <option value="33" selected>Connector 33 (default)</option>
-        <option value="34">Connector 34</option>
-        <option value="35">Connector 35</option>
-        <option value="custom">Custom…</option>
-    </select>
 
-    <input id="connector_id" type="number" value="33" min="0" style="display:block; margin: 0 0 16px; padding: 8px; width: 240px;" />
-
-    <div style="display:flex; gap:8px; flex-wrap: wrap; margin-bottom: 16px;">
-        <button onclick="startPattern()">Start</button>
-        <button onclick="stopPattern()">Stop</button>
-        <button onclick="takeControl()">Take Display Control</button>
-        <button onclick="releaseControl()">Release Display Control</button>
-    </div>
-
-    <label for="color_picker">Colour Wheel</label>
-    <input id="color_picker" type="color" value="#ffffff" style="display:block; width:120px; height:48px; border:none; padding:0; background:none; margin:8px 0 8px;" />
-
-    <div style="display:flex; gap:8px; flex-wrap: wrap;">
-        <button onclick="showFullscreenColor()">Display Full Screen Colour</button>
-        <button onclick="exitFullscreenColor()">Exit Full Screen Colour</button>
-    </div>
-
-    <pre id="status" style="margin-top: 16px; background:#111; color:#eee; padding: 12px; border-radius: 6px; min-height: 52px;">Ready.</pre>
-</div>
-
-<div id="color_overlay" style="position:fixed; inset:0; display:none; z-index:9999;"></div>
-
-<script>
-const screenSelect = document.getElementById('screen_select');
-const connectorInput = document.getElementById('connector_id');
-
-screenSelect.addEventListener('change', () => {
-    if (screenSelect.value !== 'custom') {
-        connectorInput.value = screenSelect.value;
-    }
-});
+function refreshActiveConnectorBadge() {
+    activeConnectorBadge.textContent = `Active connector: ${selectedConnectorId()}`;
+}
 
 async function postJson(url, payload = {}) {
     const response = await fetch(url, {
@@ -90,30 +75,57 @@ async function loadOutputs() {
     try {
         const response = await fetch('/pattern/outputs');
         const outputs = await response.json();
+        const list = Array.isArray(outputs) ? outputs : [];
 
-        const usable = outputs.filter(o => o.connected && o.connector_id !== null);
+        outputsDebug.textContent = JSON.stringify(list, null, 2);
         screenSelect.innerHTML = '';
 
-        usable.forEach((output, index) => {
+        const connected = list.filter(o => o.connected);
+        const withIds = connected.filter(o => o.connector_id !== null);
+
+        withIds.forEach((output, index) => {
             const option = document.createElement('option');
-            option.value = output.connector_id;
+            option.value = String(output.connector_id);
             option.textContent = `${output.name} (id ${output.connector_id})`;
-            if (index === 0) option.selected = true;
+            if (index === 0) {
+                option.selected = true;
+                customConnectorInput.value = String(output.connector_id);
+            }
             screenSelect.appendChild(option);
         });
 
-        if (usable.length === 0) {
-            const option = document.createElement('option');
-            option.value = '33';
-            option.textContent = 'No connected outputs with connector_id found (fallback id 33)';
-            screenSelect.appendChild(option);
+        if (withIds.length === 0) {
+            const fallbackOption = document.createElement('option');
+            fallbackOption.value = '33';
+            fallbackOption.textContent = connected.length > 0
+                ? 'Connected outputs found but no connector_id (fallback 33)'
+                : 'No connected outputs found (fallback connector 33)';
+            fallbackOption.selected = true;
+            screenSelect.appendChild(fallbackOption);
         }
 
-        setStatus('Outputs loaded.');
+        const customOption = document.createElement('option');
+        customOption.value = 'custom';
+        customOption.textContent = 'Custom connector id…';
+        screenSelect.appendChild(customOption);
+
+        refreshActiveConnectorBadge();
+        setStatus(`Outputs loaded: ${list.length} total, ${connected.length} connected, ${withIds.length} with connector IDs.`);
     } catch (err) {
-        setStatus(`Error loading outputs: ${err.message}`);
+        outputsDebug.textContent = `(failed to load outputs) ${err.message}`;
+        setStatus(`Error loading outputs: ${err.message}. Using fallback connector options.`);
+        refreshActiveConnectorBadge();
     }
 }
+
+screenSelect.addEventListener('change', () => {
+    if (screenSelect.value !== 'custom') {
+        customConnectorInput.value = screenSelect.value;
+    }
+    refreshActiveConnectorBadge();
+});
+
+customConnectorInput.addEventListener('input', refreshActiveConnectorBadge);
 
 async function takeControl() {
     const connector_id = selectedConnectorId();
@@ -140,22 +152,6 @@ async function startPattern() {
     try {
         await postJson('/pattern/start', { connector_id });
         setStatus(`Pattern started on connector ${connector_id}.`);
-
-    if (!response.ok) {
-        throw new Error(body.error || `Request failed (${response.status})`);
-    }
-
-    return body;
-}
-
-function setStatus(message) {
-    document.getElementById('status').textContent = message;
-}
-
-async function takeControl() {
-    try {
-        await postJson('/pattern/control', { action: 'take' });
-        setStatus('Display control taken.');
     } catch (err) {
         setStatus(`Error: ${err.message}`);
     }
@@ -166,10 +162,6 @@ async function stopPattern() {
     try {
         await postJson('/pattern/stop', { connector_id });
         setStatus(`Pattern stopped on connector ${connector_id}.`);
-async function releaseControl() {
-    try {
-        await postJson('/pattern/control', { action: 'release' });
-        setStatus('Display control released.');
     } catch (err) {
         setStatus(`Error: ${err.message}`);
     }
@@ -182,55 +174,12 @@ async function showColor() {
     try {
         await postJson('/pattern/start', { connector_id, color, mode: 'solid' });
         setStatus(`Requested colour ${color} on connector ${connector_id} via KMS process.`);
-async function startPattern() {
-    const connectorId = Number(connectorInput.value || 33);
-
-    try {
-        const result = await postJson('/pattern/start', { connector_id: connectorId });
-        setStatus(`Pattern started on connector ${result.connector_id}.`);
     } catch (err) {
         setStatus(`Error: ${err.message}`);
     }
 }
 
+refreshActiveConnectorBadge();
 loadOutputs();
-async function stopPattern() {
-    try {
-        await postJson('/pattern/stop');
-        setStatus('Pattern stopped.');
-    } catch (err) {
-        setStatus(`Error: ${err.message}`);
-    }
-}
-
-async function showFullscreenColor() {
-    const overlay = document.getElementById('color_overlay');
-    const color = document.getElementById('color_picker').value;
-    overlay.style.backgroundColor = color;
-    overlay.style.display = 'block';
-
-    if (overlay.requestFullscreen) {
-        await overlay.requestFullscreen().catch(() => {});
-    }
-
-    setStatus(`Showing full-screen colour ${color}.`);
-}
-
-async function exitFullscreenColor() {
-    const overlay = document.getElementById('color_overlay');
-
-    if (document.fullscreenElement && document.exitFullscreen) {
-        await document.exitFullscreen().catch(() => {});
-    }
-
-    overlay.style.display = 'none';
-    setStatus('Exited full-screen colour display.');
-}
-
-window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-        document.getElementById('color_overlay').style.display = 'none';
-    }
-});
 </script>
 {% endblock %}

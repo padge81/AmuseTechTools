@@ -6,6 +6,17 @@ from backend.core.pattern.service import pattern_worker
 pattern_bp = Blueprint("pattern", __name__, url_prefix="/pattern")
 
 
+def _parse_connector_id(data, default=None):
+    value = data.get("connector_id", default)
+    if value is None:
+        return None, jsonify({"ok": False, "error": "connector_id is required"}), 400
+
+    try:
+        return int(value), None, None
+    except (TypeError, ValueError):
+        return None, jsonify({"ok": False, "error": "connector_id must be an integer"}), 400
+
+
 @pattern_bp.route("/outputs", methods=["GET"])
 def outputs():
     return jsonify(list_connectors())
@@ -15,32 +26,21 @@ def outputs():
 def control():
     data = request.get_json(silent=True) or {}
     action = data.get("action")
-    connector_id = data.get("connector_id")
 
     if action not in {"take", "release"}:
         return jsonify({"ok": False, "error": "invalid action"}), 400
 
-    if connector_id is None:
-        return jsonify({"ok": False, "error": "connector_id is required"}), 400
+    connector_id, error_response, code = _parse_connector_id(data)
+    if error_response:
+        return error_response, code
 
     try:
-        connector_id = int(connector_id)
-    except (TypeError, ValueError):
-        return jsonify({"ok": False, "error": "connector_id must be an integer"}), 400
-
-    if action == "take":
-        pattern_worker.start_kmscube(connector_id)
-    else:
-        pattern_worker.stop(connector_id)
-    action = (request.get_json(silent=True) or {}).get("action")
-
-    if action == "take":
-        subprocess.run(["systemctl", "stop", "lightdm"], check=False)
-    elif action == "release":
-        pattern_worker.stop()
-        subprocess.run(["systemctl", "start", "lightdm"], check=False)
-    else:
-        return jsonify({"ok": False, "error": "invalid action"}), 400
+        if action == "take":
+            pattern_worker.start_kmscube(connector_id)
+        else:
+            pattern_worker.stop(connector_id)
+    except RuntimeError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
 
     return jsonify({"ok": True, "connector_id": connector_id, "action": action})
 
@@ -49,23 +49,22 @@ def control():
 def start():
     data = request.get_json(silent=True) or {}
 
-    try:
-        connector_id = int(data.get("connector_id", 33))
-    except (TypeError, ValueError):
-        return jsonify({"ok": False, "error": "connector_id must be an integer"}), 400
+    connector_id, error_response, code = _parse_connector_id(data, default=33)
+    if error_response:
+        return error_response, code
 
     mode = data.get("mode")
     color = data.get("color")
 
-    pattern_worker.start_kmscube(connector_id)
+    try:
+        pattern_worker.start_kmscube(connector_id)
+    except RuntimeError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
 
     response = {"ok": True, "connector_id": connector_id}
     if mode == "solid" and color:
         response["note"] = "kmscube started for selected connector (solid colour rendering depends on kmscube build/options)"
     return jsonify(response)
-
-    pattern_worker.start_kmscube(connector_id)
-    return jsonify({"ok": True, "connector_id": connector_id})
 
 
 @pattern_bp.route("/stop", methods=["POST"])
@@ -77,10 +76,9 @@ def stop():
         pattern_worker.stop()
         return jsonify({"ok": True, "scope": "all"})
 
-    try:
-        connector_id = int(connector_id)
-    except (TypeError, ValueError):
-        return jsonify({"ok": False, "error": "connector_id must be an integer"}), 400
+    connector_id, error_response, code = _parse_connector_id(data)
+    if error_response:
+        return error_response, code
 
     pattern_worker.stop(connector_id)
     return jsonify({"ok": True, "connector_id": connector_id})
