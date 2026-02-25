@@ -21,6 +21,15 @@
         Note: global DRM handover is system-wide and can affect all displays.
     </p>
 
+
+    <div style="margin: 0 0 16px; padding: 10px 12px; border:1px solid #334155; border-radius: 8px; background:#0f172a; color:#e2e8f0;">
+        <strong>Pi setup (run once)</strong>
+        <div style="margin-top:6px; font-size: 0.95em; opacity:0.9;">
+            From repo root: <code>sudo ./scripts/setup_pattern_pi_once.sh &lt;your-app-service-name&gt;</code>
+        </div>
+        <div id="pi_setup_status" style="margin-top:6px; font-size:0.95em; color:#93c5fd;">Checking setup status...</div>
+    </div>
+
     <label for="color_picker">Solid Colour</label>
     <input id="color_picker" type="color" value="#ffffff" style="display:block; width:120px; height:48px; border:none; padding:0; background:none; margin:8px 0;" />
 
@@ -70,6 +79,14 @@ async function loadCapabilities() {
         const toggle = document.getElementById('global_drm_toggle');
         toggle.checked = !!caps.force_global_drm_control;
         toggle.disabled = !!caps.force_global_drm_control || !caps.allow_global_drm_control;
+        const setupStatus = document.getElementById('pi_setup_status');
+        if (caps.pi_safe_setup_applied) {
+            setupStatus.textContent = 'Pi-safe setup detected (DSI-1 protected, global takeover disabled).';
+            setupStatus.style.color = '#86efac';
+        } else {
+            setupStatus.textContent = 'Pi-safe setup not detected yet. Run the one-time setup command shown above and restart service.';
+            setupStatus.style.color = '#fbbf24';
+        }
         setStatus(`Capabilities: scope=${scope}, global_handover_scope=${handoverScope}, global_mode=${globalMode}, protected_connectors=${protectedConnectors}.`);
     } catch (err) {
         setStatus(`Could not load capabilities: ${err.message}`);

@@ -103,6 +103,7 @@ def outputs():
 
 @pattern_bp.route("/capabilities", methods=["GET"])
 def capabilities():
+    protected = sorted(_PROTECTED_CONNECTORS)
     return jsonify({
         "renderer": "gstreamer-kmssink",
         "display_control_scope": "per-connector-reservation",
@@ -110,7 +111,12 @@ def capabilities():
         "supports_connector_selection": True,
         "allow_global_drm_control": _ALLOW_GLOBAL_DRM_CONTROL,
         "force_global_drm_control": _FORCE_GLOBAL_DRM_CONTROL,
-        "protected_connectors": sorted(_PROTECTED_CONNECTORS),
+        "protected_connectors": protected,
+        "pi_safe_setup_applied": (
+            not _ALLOW_GLOBAL_DRM_CONTROL
+            and not _FORCE_GLOBAL_DRM_CONTROL
+            and "DSI-1" in protected
+        ),
     })
 
 
