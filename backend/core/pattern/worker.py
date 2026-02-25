@@ -14,8 +14,14 @@ class PatternWorker:
             self._stop_locked(connector_id)
 
             cmd = self._kmscube_command(connector_id)
+            self._preflight(cmd)
+
             try:
-                self._procs[connector_id] = subprocess.Popen(cmd)
+                self._procs[connector_id] = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
             except FileNotFoundError as exc:
                 raise RuntimeError("kmscube is not installed or not in PATH") from exc
 
@@ -42,6 +48,35 @@ class PatternWorker:
             return ["kmscube", "-n", str(connector_id)]
 
         return ["kmscube"]
+
+    def _preflight(self, cmd):
+        try:
+            result = subprocess.run(
+                cmd + ["-c", "1"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=8,
+            )
+        except FileNotFoundError as exc:
+            raise RuntimeError("kmscube is not installed or not in PATH") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError("kmscube preflight timed out") from exc
+
+        if result.returncode == 0:
+            return
+
+        output = ((result.stdout or "") + "\n" + (result.stderr or "")).strip()
+        lowered = output.lower()
+
+        if "permission denied" in lowered or "failed to set mode" in lowered:
+            raise RuntimeError(
+                "kmscube failed to acquire DRM mode-setting access (permission denied). "
+                "Ensure display manager/compositor is stopped and user has DRM permissions."
+            )
+
+        first_line = output.splitlines()[0] if output else f"exit code {result.returncode}"
+        raise RuntimeError(f"kmscube preflight failed: {first_line}")
 
     @staticmethod
     def _detect_connector_arg_support():
