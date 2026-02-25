@@ -130,8 +130,9 @@ customConnectorInput.addEventListener('input', refreshActiveConnectorBadge);
 async function takeControl() {
     const connector_id = selectedConnectorId();
     try {
-        await postJson('/pattern/control', { action: 'take', connector_id });
-        setStatus(`Display control taken for connector ${connector_id}.`);
+        const result = await postJson('/pattern/control', { action: 'take', connector_id });
+        const warning = result.warning ? ` Warning: ${result.warning}` : '';
+        setStatus(`Display control taken for connector ${connector_id}.${warning}`);
     } catch (err) {
         setStatus(`Error: ${err.message}`);
     }
@@ -150,8 +151,9 @@ async function releaseControl() {
 async function startPattern() {
     const connector_id = selectedConnectorId();
     try {
-        await postJson('/pattern/start', { connector_id });
-        setStatus(`Pattern started on connector ${connector_id}.`);
+        const result = await postJson('/pattern/start', { connector_id });
+        const warning = result.warning ? ` Warning: ${result.warning}` : '';
+        setStatus(`Pattern started on connector ${connector_id}.${warning}`);
     } catch (err) {
         setStatus(`Error: ${err.message}`);
     }
@@ -172,8 +174,9 @@ async function showColor() {
     const color = document.getElementById('color_picker').value;
 
     try {
-        await postJson('/pattern/start', { connector_id, color, mode: 'solid' });
-        setStatus(`Requested colour ${color} on connector ${connector_id} via KMS process.`);
+        const result = await postJson('/pattern/start', { connector_id, color, mode: 'solid' });
+        const warning = result.warning ? ` Warning: ${result.warning}` : '';
+        setStatus(`Requested colour ${color} on connector ${connector_id} via KMS process.${warning}`);
     } catch (err) {
         setStatus(`Error: ${err.message}`);
     }

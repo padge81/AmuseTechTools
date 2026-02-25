@@ -36,13 +36,17 @@ def control():
 
     try:
         if action == "take":
-            pattern_worker.start_kmscube(connector_id)
+            start_meta = pattern_worker.start_kmscube(connector_id)
         else:
             pattern_worker.stop(connector_id)
+            start_meta = None
     except RuntimeError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 
-    return jsonify({"ok": True, "connector_id": connector_id, "action": action})
+    response = {"ok": True, "connector_id": connector_id, "action": action}
+    if action == "take" and start_meta and not start_meta["connector_selection_supported"]:
+        response["warning"] = "This kmscube build does not support connector selection; pattern may appear on the default connector."
+    return jsonify(response)
 
 
 @pattern_bp.route("/start", methods=["POST"])
@@ -57,13 +61,15 @@ def start():
     color = data.get("color")
 
     try:
-        pattern_worker.start_kmscube(connector_id)
+        start_meta = pattern_worker.start_kmscube(connector_id)
     except RuntimeError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 
     response = {"ok": True, "connector_id": connector_id}
+    if not start_meta["connector_selection_supported"]:
+        response["warning"] = "This kmscube build does not support connector selection; pattern may appear on the default connector."
     if mode == "solid" and color:
-        response["note"] = "kmscube started for selected connector (solid colour rendering depends on kmscube build/options)"
+        response["note"] = "Requested solid colour via kmscube start (actual rendering depends on kmscube build/options)."
     return jsonify(response)
 
 
