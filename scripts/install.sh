@@ -26,9 +26,21 @@ fi
 
 log "Installing system dependencies..."
 sudo apt update
+
+CHROMIUM_PKG=""
+if apt-cache show chromium-browser >/dev/null 2>&1; then
+  CHROMIUM_PKG="chromium-browser"
+elif apt-cache show chromium >/dev/null 2>&1; then
+  CHROMIUM_PKG="chromium"
+else
+  echo "Could not find chromium-browser or chromium package in apt sources." >&2
+  exit 1
+fi
+
+log "Using Chromium package: ${CHROMIUM_PKG}"
 sudo apt install -y \
   python3 python3-venv python3-pip \
-  chromium-browser unclutter x11-xserver-utils xinput \
+  "${CHROMIUM_PKG}" unclutter x11-xserver-utils xinput \
   wmctrl xdotool curl
 
 log "Preparing Python virtual environment..."
@@ -115,7 +127,17 @@ done
 pkill -f chromium || true
 sleep 1
 
-chromium-browser \
+CHROMIUM_CMD=""
+if command -v chromium-browser >/dev/null 2>&1; then
+  CHROMIUM_CMD="chromium-browser"
+elif command -v chromium >/dev/null 2>&1; then
+  CHROMIUM_CMD="chromium"
+else
+  echo "No chromium executable found (chromium-browser/chromium)" >&2
+  exit 1
+fi
+
+"${CHROMIUM_CMD}" \
   --kiosk \
   --password-store=basic \
   --noerrdialogs \
