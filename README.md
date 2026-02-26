@@ -110,6 +110,12 @@ This repository provides tools and modules to support amusement systems, likely 
 	pip install -r backend/requirements.txt
 	Follow any additional setup instructions in system/ scripts or documentation files.
 
+	One-step Raspberry Pi kiosk installer (dependencies + service + rotation/cursor controls):
+	scripts/install.sh
+
+	This installs required apt packages, creates a venv, installs Python deps, writes a
+	user service named `amuse-tech-tools.service`, and configures touchscreen/display rotation.
+
 --Usage
 	To run the backend server, typically:
 	python backend/app.py
