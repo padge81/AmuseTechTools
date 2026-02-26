@@ -28,10 +28,10 @@ log "Installing system dependencies..."
 sudo apt update
 
 CHROMIUM_PKG=""
-if apt-cache show chromium-browser >/dev/null 2>&1; then
-  CHROMIUM_PKG="chromium-browser"
-elif apt-cache show chromium >/dev/null 2>&1; then
+if apt-cache show chromium >/dev/null 2>&1; then
   CHROMIUM_PKG="chromium"
+elif apt-cache show chromium-browser >/dev/null 2>&1; then
+  CHROMIUM_PKG="chromium-browser"
 else
   echo "Could not find chromium-browser or chromium package in apt sources." >&2
   exit 1
