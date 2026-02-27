@@ -2,14 +2,21 @@
 set -euo pipefail
 
 APP_NAME="amuse-tech-tools"
-APP_DIR="${HOME}/AmuseTechTools"
+TARGET_USER="${SUDO_USER:-${USER}}"
+TARGET_HOME="$(getent passwd "${TARGET_USER}" | cut -d: -f6)"
+if [[ -z "${TARGET_HOME}" ]]; then
+  echo "Could not resolve home directory for user '${TARGET_USER}'" >&2
+  exit 1
+fi
+
+APP_DIR="${TARGET_HOME}/AmuseTechTools"
 VENV_DIR="${APP_DIR}/.venv"
-SERVICE_DIR="${HOME}/.config/systemd/user"
+SERVICE_DIR="${TARGET_HOME}/.config/systemd/user"
 SERVICE_FILE="${SERVICE_DIR}/${APP_NAME}.service"
 START_SCRIPT="${APP_DIR}/system/kiosk/start_kiosk.sh"
 SETUP_SCRIPT="${APP_DIR}/system/kiosk/setup_kiosk.sh"
 URL="http://127.0.0.1:8080"
-DESKTOP_DIR="${HOME}/Desktop"
+DESKTOP_DIR="${TARGET_HOME}/Desktop"
 DESKTOP_FILE="${DESKTOP_DIR}/AmuseTechTools.desktop"
 
 ROTATE_DISPLAY="${ROTATE_DISPLAY:-right}"     # right|left|normal|inverted
@@ -18,6 +25,12 @@ TOUCH_MATCH="${TOUCH_MATCH:-ft5x06|ft5406}"
 HIDE_CURSOR="${HIDE_CURSOR:-1}"
 
 log() { echo "[install] $*"; }
+
+run_as_target_user() {
+  local uid
+  uid="$(id -u "${TARGET_USER}")"
+  sudo -u "${TARGET_USER}" env XDG_RUNTIME_DIR="/run/user/${uid}" "$@"
+}
 
 if ! command -v apt >/dev/null 2>&1; then
   echo "This installer currently supports Debian/Raspberry Pi OS (apt)." >&2
@@ -44,19 +57,15 @@ sudo apt install -y \
   wmctrl xdotool curl
 
 log "Preparing Python virtual environment..."
-python3 -m venv "${VENV_DIR}"
-# shellcheck disable=SC1090
-source "${VENV_DIR}/bin/activate"
-pip install --upgrade pip
+sudo -u "${TARGET_USER}" python3 -m venv "${VENV_DIR}"
+run_as_target_user "${VENV_DIR}/bin/pip" install --upgrade pip
 
 if [[ -s "${APP_DIR}/backend/requirements.txt" ]]; then
-  pip install -r "${APP_DIR}/backend/requirements.txt"
+  run_as_target_user "${VENV_DIR}/bin/pip" install -r "${APP_DIR}/backend/requirements.txt"
 else
   log "backend/requirements.txt is empty; installing minimum runtime packages."
-  pip install flask
+  run_as_target_user "${VENV_DIR}/bin/pip" install flask
 fi
-
-deactivate || true
 
 log "Writing kiosk start script: ${START_SCRIPT}"
 mkdir -p "$(dirname "${START_SCRIPT}")"
@@ -151,6 +160,7 @@ fi
 wait
 START_EOF
 chmod +x "${START_SCRIPT}"
+chown "${TARGET_USER}:${TARGET_USER}" "${START_SCRIPT}"
 
 log "Writing convenience setup wrapper: ${SETUP_SCRIPT}"
 cat > "${SETUP_SCRIPT}" <<'SETUP_EOF'
@@ -159,6 +169,7 @@ set -euo pipefail
 "$HOME/AmuseTechTools/scripts/install.sh"
 SETUP_EOF
 chmod +x "${SETUP_SCRIPT}"
+chown "${TARGET_USER}:${TARGET_USER}" "${SETUP_SCRIPT}"
 
 log "Installing user systemd service: ${SERVICE_FILE}"
 mkdir -p "${SERVICE_DIR}"
@@ -182,9 +193,16 @@ Environment=HIDE_CURSOR=${HIDE_CURSOR}
 [Install]
 WantedBy=default.target
 SERVICE_EOF
+chown -R "${TARGET_USER}:${TARGET_USER}" "${SERVICE_DIR}"
 
-systemctl --user daemon-reload
-systemctl --user enable "${APP_NAME}.service"
+if run_as_target_user systemctl --user daemon-reload && run_as_target_user systemctl --user enable "${APP_NAME}.service"; then
+  log "User service enabled for ${TARGET_USER}."
+else
+  log "Warning: could not access user systemd bus for ${TARGET_USER} during install."
+  log "When logged in as ${TARGET_USER}, run:"
+  log "  systemctl --user daemon-reload"
+  log "  systemctl --user enable ${APP_NAME}.service"
+fi
 
 log "Creating desktop launcher: ${DESKTOP_FILE}"
 mkdir -p "${DESKTOP_DIR}"
@@ -199,17 +217,18 @@ Type=Application
 Categories=Utility;
 DESKTOP_EOF
 chmod +x "${DESKTOP_FILE}"
+chown "${TARGET_USER}:${TARGET_USER}" "${DESKTOP_FILE}"
 
 log "Enabling user linger for boot autostart"
 if command -v loginctl >/dev/null 2>&1; then
-  sudo loginctl enable-linger "${USER}" || true
+  sudo loginctl enable-linger "${TARGET_USER}" || true
 else
   log "loginctl not available; skipping linger setup"
 fi
 
 log "Install complete."
 log "Start now:   systemctl --user start ${APP_NAME}.service"
-log "Enable at boot: linger is enabled for user ${USER}"
+log "Enable at boot: linger is enabled for user ${TARGET_USER}"
 log "Desktop icon: ${DESKTOP_FILE}"
 log "View logs:   journalctl --user -u ${APP_NAME}.service -f"
 log "Rotate conf: edit ${SERVICE_FILE} env vars (DISPLAY_OUTPUT/ROTATE_DISPLAY)"
