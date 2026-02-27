@@ -113,9 +113,10 @@ This repository provides tools and modules to support amusement systems, likely 
 	One-step Raspberry Pi kiosk installer (dependencies + service + rotation/cursor controls):
 	scripts/install.sh
 
-	This installs required apt packages, creates a venv, installs Python deps, writes a
-	user service named `amuse-tech-tools.service`, configures touchscreen/display rotation,
-	creates a Desktop launcher, and enables user-linger for auto-start at boot.
+	This installs required apt packages, creates a venv, installs Python deps, writes
+	user + system services named `amuse-tech-tools.service`, configures touchscreen/display
+	rotation, locks kiosk to the chosen display output, creates a Desktop launcher, and
+	enables boot autostart.
 
 --Usage
 	To run the backend server, typically:

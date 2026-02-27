@@ -13,6 +13,8 @@ APP_DIR="${TARGET_HOME}/AmuseTechTools"
 VENV_DIR="${APP_DIR}/.venv"
 SERVICE_DIR="${TARGET_HOME}/.config/systemd/user"
 SERVICE_FILE="${SERVICE_DIR}/${APP_NAME}.service"
+SERVICE_WANTS_DIR="${SERVICE_DIR}/default.target.wants"
+SYSTEM_SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
 START_SCRIPT="${APP_DIR}/system/kiosk/start_kiosk.sh"
 SETUP_SCRIPT="${APP_DIR}/system/kiosk/setup_kiosk.sh"
 URL="http://127.0.0.1:8080"
@@ -23,6 +25,7 @@ ROTATE_DISPLAY="${ROTATE_DISPLAY:-right}"     # right|left|normal|inverted
 DISPLAY_OUTPUT="${DISPLAY_OUTPUT:-DSI-1}"      # e.g. DSI-1
 TOUCH_MATCH="${TOUCH_MATCH:-ft5x06|ft5406}"
 HIDE_CURSOR="${HIDE_CURSOR:-1}"
+BROWSER_LOCK_OUTPUT="${BROWSER_LOCK_OUTPUT:-1}"
 
 log() { echo "[install] $*"; }
 
@@ -86,19 +89,35 @@ DISPLAY_OUTPUT="${DISPLAY_OUTPUT:-DSI-1}"
 ROTATE_DISPLAY="${ROTATE_DISPLAY:-right}"
 TOUCH_MATCH="${TOUCH_MATCH:-ft5x06|ft5406}"
 HIDE_CURSOR="${HIDE_CURSOR:-1}"
+BROWSER_LOCK_OUTPUT="${BROWSER_LOCK_OUTPUT:-1}"
 
 export DISPLAY=:0
 export XAUTHORITY="$HOME/.Xauthority"
 
-for i in {1..40}; do
+for i in {1..80}; do
   if xset q >/dev/null 2>&1; then
     break
   fi
   sleep 1
 done
 
-# Rotate panel output
-xrandr --output "$DISPLAY_OUTPUT" --rotate "$ROTATE_DISPLAY" || echo "Display rotation skipped"
+resolve_output_name() {
+  local want="$1"
+  local candidate
+  while read -r candidate; do
+    [[ "$candidate" == "$want" ]] && { echo "$candidate"; return 0; }
+    [[ "${candidate^^}" == "${want^^}" ]] && { echo "$candidate"; return 0; }
+  done < <(xrandr --query | awk '/ connected/{print $1}')
+  return 1
+}
+
+OUTPUT_NAME="$DISPLAY_OUTPUT"
+if ! OUTPUT_NAME="$(resolve_output_name "$DISPLAY_OUTPUT")"; then
+  OUTPUT_NAME="$DISPLAY_OUTPUT"
+fi
+
+# Rotate selected panel output and make it primary so kiosk opens there.
+xrandr --output "$OUTPUT_NAME" --auto --rotate "$ROTATE_DISPLAY" --primary || echo "Display rotation/primary set skipped"
 
 # Rotate touch matrix to match "right" rotation by default
 TOUCH_NAME=$(xinput list --name-only | grep -Ei "$TOUCH_MATCH" | head -n1 || true)
@@ -148,6 +167,8 @@ fi
 
 "${CHROMIUM_CMD}" \
   --kiosk \
+  --start-fullscreen \
+  --window-position=0,0 \
   --password-store=basic \
   --noerrdialogs \
   --disable-infobars \
@@ -156,6 +177,12 @@ fi
   --disable-features=TranslateUI \
   --check-for-update-interval=31536000 \
   "$URL" &
+
+# Best-effort lock to selected output in X11 WM if requested.
+if [[ "$BROWSER_LOCK_OUTPUT" == "1" ]]; then
+  sleep 3
+  wmctrl -r "Chromium" -b add,fullscreen || true
+fi
 
 wait
 START_EOF
@@ -189,10 +216,16 @@ Environment=DISPLAY_OUTPUT=${DISPLAY_OUTPUT}
 Environment=ROTATE_DISPLAY=${ROTATE_DISPLAY}
 Environment=TOUCH_MATCH=${TOUCH_MATCH}
 Environment=HIDE_CURSOR=${HIDE_CURSOR}
+Environment=BROWSER_LOCK_OUTPUT=${BROWSER_LOCK_OUTPUT}
 
 [Install]
 WantedBy=default.target
 SERVICE_EOF
+chown -R "${TARGET_USER}:${TARGET_USER}" "${SERVICE_DIR}"
+
+# Ensure autostart even when systemctl --user cannot enable in non-interactive sudo contexts.
+mkdir -p "${SERVICE_WANTS_DIR}"
+ln -sfn "../${APP_NAME}.service" "${SERVICE_WANTS_DIR}/${APP_NAME}.service"
 chown -R "${TARGET_USER}:${TARGET_USER}" "${SERVICE_DIR}"
 
 if run_as_target_user systemctl --user daemon-reload && run_as_target_user systemctl --user enable "${APP_NAME}.service"; then
@@ -203,6 +236,35 @@ else
   log "  systemctl --user daemon-reload"
   log "  systemctl --user enable ${APP_NAME}.service"
 fi
+
+log "Installing system service for boot autostart: ${SYSTEM_SERVICE_FILE}"
+cat > "${SYSTEM_SERVICE_FILE}" <<SYSTEM_SERVICE_EOF
+[Unit]
+Description=AmuseTechTools Kiosk (system boot)
+After=network-online.target graphical.target
+Wants=network-online.target graphical.target
+
+[Service]
+Type=simple
+User=${TARGET_USER}
+Group=${TARGET_USER}
+WorkingDirectory=${APP_DIR}
+ExecStart=${START_SCRIPT}
+Restart=on-failure
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=${TARGET_HOME}/.Xauthority
+Environment=DISPLAY_OUTPUT=${DISPLAY_OUTPUT}
+Environment=ROTATE_DISPLAY=${ROTATE_DISPLAY}
+Environment=TOUCH_MATCH=${TOUCH_MATCH}
+Environment=HIDE_CURSOR=${HIDE_CURSOR}
+Environment=BROWSER_LOCK_OUTPUT=${BROWSER_LOCK_OUTPUT}
+
+[Install]
+WantedBy=multi-user.target
+SYSTEM_SERVICE_EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable "${APP_NAME}.service"
 
 log "Creating desktop launcher: ${DESKTOP_FILE}"
 mkdir -p "${DESKTOP_DIR}"
@@ -228,6 +290,7 @@ fi
 
 log "Install complete."
 log "Start now:   systemctl --user start ${APP_NAME}.service"
+log "System boot autostart enabled: sudo systemctl status ${APP_NAME}.service"
 log "Enable at boot: linger is enabled for user ${TARGET_USER}"
 log "Desktop icon: ${DESKTOP_FILE}"
 log "View logs:   journalctl --user -u ${APP_NAME}.service -f"
