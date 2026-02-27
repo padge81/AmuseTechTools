@@ -110,6 +110,14 @@ This repository provides tools and modules to support amusement systems, likely 
 	pip install -r backend/requirements.txt
 	Follow any additional setup instructions in system/ scripts or documentation files.
 
+	One-step Raspberry Pi kiosk installer (dependencies + service + rotation/cursor controls):
+	scripts/install.sh
+
+	This installs required apt packages, creates a venv, installs Python deps, writes
+	user + system services named `amuse-tech-tools.service`, configures touchscreen/display
+	rotation, locks kiosk to the chosen display output, creates a Desktop launcher, and
+	enables boot autostart.
+
 --Usage
 	To run the backend server, typically:
 	python backend/app.py
@@ -119,6 +127,13 @@ This repository provides tools and modules to support amusement systems, likely 
 
 	python scripts/test_edid_read.py
 	System setup scripts (e.g., setup_kiosk.sh) are for configuring the Raspberry Pi environment.
+
+	Pattern generator Pi safety setup (one-time):
+
+	sudo scripts/setup_pattern_pi_once.sh <your-app-service-name>
+
+	This writes `/etc/default/amuse-tech-tools-pattern` and a matching systemd override so
+	`DSI-1` remains protected while pattern output can be targeted to HDMI connectors.
 --Documentation
 	For detailed architecture and component explanations, refer to docs/architecture.md and other markdown files.
 	EDID handling is documented in docs/edid.md.
@@ -127,5 +142,4 @@ This repository provides tools and modules to support amusement systems, likely 
 
 --Contributing
 	Contributions are welcome! Please fork the repository, create a feature branch, and submit a pull request with your improvements.
-
 
