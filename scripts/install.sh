@@ -15,6 +15,8 @@ SERVICE_DIR="${TARGET_HOME}/.config/systemd/user"
 SERVICE_FILE="${SERVICE_DIR}/${APP_NAME}.service"
 SERVICE_WANTS_DIR="${SERVICE_DIR}/default.target.wants"
 SYSTEM_SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
+AUTOSTART_DIR="${TARGET_HOME}/.config/autostart"
+AUTOSTART_FILE="${AUTOSTART_DIR}/${APP_NAME}.desktop"
 START_SCRIPT="${APP_DIR}/system/kiosk/start_kiosk.sh"
 SETUP_SCRIPT="${APP_DIR}/system/kiosk/setup_kiosk.sh"
 URL="http://127.0.0.1:8080"
@@ -111,13 +113,34 @@ resolve_output_name() {
   return 1
 }
 
+wait_for_output_connected() {
+  local out="$1"
+  local i
+  for i in {1..60}; do
+    if xrandr --query | awk '/ connected/{print $1}' | grep -Fxq "$out"; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+get_output_geometry() {
+  local out="$1"
+  xrandr --current | awk -v out="$out" '$1==out && $2=="connected" {for(i=1;i<=NF;i++) if($i ~ /[0-9]+x[0-9]+\+[0-9]+\+[0-9]+/) {print $i; exit}}'
+}
+
 OUTPUT_NAME="$DISPLAY_OUTPUT"
 if ! OUTPUT_NAME="$(resolve_output_name "$DISPLAY_OUTPUT")"; then
   OUTPUT_NAME="$DISPLAY_OUTPUT"
 fi
 
 # Rotate selected panel output and make it primary so kiosk opens there.
-xrandr --output "$OUTPUT_NAME" --auto --rotate "$ROTATE_DISPLAY" --primary || echo "Display rotation/primary set skipped"
+if wait_for_output_connected "$OUTPUT_NAME"; then
+  xrandr --output "$OUTPUT_NAME" --auto --rotate "$ROTATE_DISPLAY" --primary || echo "Display rotation/primary set skipped"
+else
+  echo "Output '$OUTPUT_NAME' not detected as connected in time"
+fi
 
 # Rotate touch matrix to match "right" rotation by default
 TOUCH_NAME=$(xinput list --name-only | grep -Ei "$TOUCH_MATCH" | head -n1 || true)
@@ -180,7 +203,17 @@ fi
 
 # Best-effort lock to selected output in X11 WM if requested.
 if [[ "$BROWSER_LOCK_OUTPUT" == "1" ]]; then
+  GEOM="$(get_output_geometry "$OUTPUT_NAME" || true)"
   sleep 3
+  if [[ -n "$GEOM" ]]; then
+    SIZE="${GEOM%%+*}"
+    REST="${GEOM#*+}"
+    XPOS="${REST%%+*}"
+    YPOS="${REST#*+}"
+    WIDTH="${SIZE%x*}"
+    HEIGHT="${SIZE#*x}"
+    wmctrl -r "Chromium" -e "0,${XPOS},${YPOS},${WIDTH},${HEIGHT}" || true
+  fi
   wmctrl -r "Chromium" -b add,fullscreen || true
 fi
 
@@ -203,7 +236,7 @@ mkdir -p "${SERVICE_DIR}"
 cat > "${SERVICE_FILE}" <<SERVICE_EOF
 [Unit]
 Description=AmuseTechTools Kiosk
-After=graphical-session.target
+After=graphical-session.target graphical.target
 Wants=graphical-session.target
 
 [Service]
@@ -241,8 +274,8 @@ log "Installing system service for boot autostart: ${SYSTEM_SERVICE_FILE}"
 cat > "${SYSTEM_SERVICE_FILE}" <<SYSTEM_SERVICE_EOF
 [Unit]
 Description=AmuseTechTools Kiosk (system boot)
-After=network-online.target graphical.target
-Wants=network-online.target graphical.target
+After=network-online.target display-manager.service graphical.target
+Wants=network-online.target display-manager.service graphical.target
 
 [Service]
 Type=simple
@@ -265,6 +298,17 @@ SYSTEM_SERVICE_EOF
 
 sudo systemctl daemon-reload
 sudo systemctl enable "${APP_NAME}.service"
+
+log "Creating desktop autostart entry: ${AUTOSTART_FILE}"
+mkdir -p "${AUTOSTART_DIR}"
+cat > "${AUTOSTART_FILE}" <<AUTOSTART_EOF
+[Desktop Entry]
+Type=Application
+Name=AmuseTechTools Autostart
+Exec=systemctl --user start ${APP_NAME}.service
+X-GNOME-Autostart-enabled=true
+AUTOSTART_EOF
+chown "${TARGET_USER}:${TARGET_USER}" "${AUTOSTART_FILE}"
 
 log "Creating desktop launcher: ${DESKTOP_FILE}"
 mkdir -p "${DESKTOP_DIR}"
