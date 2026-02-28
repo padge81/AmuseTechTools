@@ -72,16 +72,27 @@ install_labwc_rotation_autostart() {
 
   mkdir -p "$labwc_dir"
 
-  cat > "$labwc_autostart" <<EOF
+cat > "$labwc_autostart" <<EOF
 #!/usr/bin/env bash
 set -e
+
 export XDG_RUNTIME_DIR="\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}"
 export WAYLAND_DISPLAY="\${WAYLAND_DISPLAY:-\$(ls "\$XDG_RUNTIME_DIR" 2>/dev/null | grep '^wayland-' | head -n1)}"
 
+# Try a few times because outputs appear slightly after compositor start.
 for i in \$(seq 1 30); do
-  wlr-randr --output "${WAYLAND_OUTPUT}" --transform ${ROTATE_DEG} >/dev/null 2>&1 && exit 0
+  # Rotate the DSI output
+  wlr-randr --output "${WAYLAND_OUTPUT}" --pos 0,0 --transform ${ROTATE_DEG} >/dev/null 2>&1 || true
+
+  # Disable HDMI so kiosk cannot appear there
+  # Common name on Pi: HDMI-A-1 (change if yours differs)
+  wlr-randr --output "HDMI-A-1" --off >/dev/null 2>&1 || true
+
+  # If DSI command succeeded, we're good enough
+  wlr-randr --output "${WAYLAND_OUTPUT}" >/dev/null 2>&1 && exit 0
   sleep 0.3
 done
+
 exit 0
 EOF
 
