@@ -3,6 +3,22 @@ import subprocess
 
 bp = Blueprint("system", __name__, url_prefix="/system")
 
+@bp.route("/osk/show", methods=["POST"])
+def osk_show():
+    subprocess.Popen(["pkill", "-SIGUSR2", "-x", "wvkbd-mobintl"])
+    return jsonify({"status": "ok"})
+
+@bp.route("/osk/hide", methods=["POST"])
+def osk_hide():
+    subprocess.Popen(["pkill", "-SIGUSR1", "-x", "wvkbd-mobintl"])
+    return jsonify({"status": "ok"})
+
+@bp.route("/osk/toggle", methods=["POST"])
+def osk_toggle():
+    # SIGRTMIN toggles in wvkbd
+    subprocess.Popen(["pkill", "-SIGRTMIN", "-x", "wvkbd-mobintl"])
+    return jsonify({"status": "ok"})
+    
 @bp.route("/exit", methods=["POST"])
 def exit_browser():
     subprocess.Popen(["pkill", "-f", "chromium"])

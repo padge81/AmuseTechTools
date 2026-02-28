@@ -125,6 +125,7 @@ sudo apt install -y \
   python3 python3-venv python3-pip \
   python3-smbus i2c-tools \
   "${CHROMIUM_PKG}" \
+  wvkbd \
   unclutter wmctrl xdotool curl wlr-randr
 
 install_labwc_rotation_autostart
@@ -209,6 +210,9 @@ CHROMIUM_CMD="$(command -v chromium-browser || command -v chromium)"
   --disable-session-crashed-bubble \
   --disable-translate \
   "$URL" &
+# Start on-screen keyboard (Wayland) hidden; show/hide via signals
+pkill -x wvkbd-mobintl 2>/dev/null || true
+wvkbd-mobintl --hidden -H 280 -L 200 &
 
 wait
 START_EOF
