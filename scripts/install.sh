@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# =========================
+# AmuseTechTools Installer
+# Raspberry Pi OS / Debian 13 (Trixie) + LightDM + labwc (Wayland)
+#
+# Rotation: handled by labwc (Wayland) using wlr-randr (NOT xrandr).
+# Touch: do NOT apply xinput matrices. If you previously added swapxy/invx/invy
+#        in config.txt, this installer will remove those params to avoid
+#        double-transform once Wayland rotation is enabled.
+# =========================
+
 APP_NAME="amuse-tech-tools"
 
 TARGET_USER="${SUDO_USER:-${USER}}"
@@ -17,11 +27,6 @@ SERVICE_DIR="${TARGET_HOME}/.config/systemd/user"
 SERVICE_FILE="${SERVICE_DIR}/${APP_NAME}.service"
 SERVICE_WANTS_DIR="${SERVICE_DIR}/default.target.wants"
 
-SYSTEM_SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
-
-AUTOSTART_DIR="${TARGET_HOME}/.config/autostart"
-AUTOSTART_FILE="${AUTOSTART_DIR}/${APP_NAME}.desktop"
-
 START_SCRIPT="${APP_DIR}/system/kiosk/start_kiosk.sh"
 SETUP_SCRIPT="${APP_DIR}/system/kiosk/setup_kiosk.sh"
 
@@ -30,13 +35,17 @@ URL="http://127.0.0.1:8080"
 DESKTOP_DIR="${TARGET_HOME}/Desktop"
 DESKTOP_FILE="${DESKTOP_DIR}/AmuseTechTools.desktop"
 
-# Kiosk behavior knobs (kept)
+# Kiosk knobs
 HIDE_CURSOR="${HIDE_CURSOR:-1}"
 BROWSER_FULLSCREEN="${BROWSER_FULLSCREEN:-1}"
 
-# --- Correct rotation method for Trixie + labwc (Wayland) + official DSI ---
-# Use KMS/kernel rotation (NOT xrandr). Degrees: 0|90|180|270
-DSI_ROTATE_DEG="${DSI_ROTATE_DEG:-90}"
+# Rotation: Wayland (labwc) output transform in degrees
+# Supported by wlr-randr: 0, 90, 180, 270
+ROTATE_DEG="${ROTATE_DEG:-90}"
+WAYLAND_OUTPUT="${WAYLAND_OUTPUT:-DSI-1}"
+
+BOOT_CONFIG="/boot/firmware/config.txt"
+CMDLINE="/boot/firmware/cmdline.txt"
 
 log() { echo "[install] $*"; }
 
@@ -46,13 +55,6 @@ run_as_target_user() {
   sudo -u "${TARGET_USER}" env XDG_RUNTIME_DIR="/run/user/${uid}" "$@"
 }
 
-require_apt() {
-  if ! command -v apt >/dev/null 2>&1; then
-    echo "This installer currently supports Debian/Raspberry Pi OS (apt)." >&2
-    exit 1
-  fi
-}
-
 backup_file() {
   local f="$1"
   if [[ -f "$f" ]]; then
@@ -60,78 +62,93 @@ backup_file() {
   fi
 }
 
-set_dsi_rotation_kms() {
-  local cmdline="/boot/firmware/cmdline.txt"
-  local config="/boot/firmware/config.txt"
-
-  if [[ ! -f "$cmdline" ]]; then
-    echo "[install] ERROR: ${cmdline} not found" >&2
+require_apt() {
+  if ! command -v apt >/dev/null 2>&1; then
+    echo "This installer currently supports Debian/Raspberry Pi OS (apt)." >&2
     exit 1
   fi
-  if [[ ! -f "$config" ]]; then
-    echo "[install] ERROR: ${config} not found" >&2
-    exit 1
-  fi
+}
 
-  case "${DSI_ROTATE_DEG}" in
+validate_rotation() {
+  case "$ROTATE_DEG" in
     0|90|180|270) ;;
     *)
-      echo "[install] ERROR: DSI_ROTATE_DEG must be 0, 90, 180, or 270 (got '${DSI_ROTATE_DEG}')" >&2
+      echo "[install] ERROR: ROTATE_DEG must be 0, 90, 180, or 270 (got '$ROTATE_DEG')" >&2
       exit 1
       ;;
   esac
-
-  log "Configuring official DSI rotation for Wayland/KMS (DSI_ROTATE_DEG=${DSI_ROTATE_DEG})"
-
-  # --- cmdline: single line; append/replace video=DSI-1:... token
-  backup_file "$cmdline"
-  local current
-  current="$(sudo cat "$cmdline")"
-
-  # Remove any existing video=DSI-1:... token
-  current="$(echo "$current" \
-    | sed -E 's/(^| )video=DSI-1:[^ ]+//g' \
-    | sed -E 's/  +/ /g' \
-    | sed -E 's/^ //; s/ $//')"
-
-  # Add ours
-  local new
-  new="${current} video=DSI-1:800x480@60,rotate=${DSI_ROTATE_DEG}"
-  echo "$new" | sudo tee "$cmdline" >/dev/null
-
-  # --- config.txt: ensure overlays for DSI touchscreen under KMS and fix touch axis
-  backup_file "$config"
-
-  # Touch params mapping (practical defaults):
-  #  - 0: none
-  #  - 180: invx,invy
-  #  - 90/270: swapxy plus one inversion (can vary by mounting; see notes below)
-  local touch_params=""
-  case "${DSI_ROTATE_DEG}" in
-    0)   touch_params="" ;;
-    180) touch_params=",invx,invy" ;;
-    90)  touch_params=",swapxy,invy" ;;   # if touch ends up mirrored, change to ",swapxy,invx"
-    270) touch_params=",swapxy,invx" ;;   # if touch ends up mirrored, change to ",swapxy,invy"
-  esac
-
-  # Remove existing vc4-kms-dsi-7inch overlay lines to avoid duplicates
-  sudo sed -i -E '/^\s*dtoverlay=vc4-kms-dsi-7inch([, ].*)?$/d' "$config"
-
-  # Ensure vc4-kms-v3d exists (commonly needed on Pi OS KMS stacks)
-  if ! sudo grep -qE '^\s*dtoverlay=vc4-kms-v3d\b' "$config"; then
-    echo "dtoverlay=vc4-kms-v3d" | sudo tee -a "$config" >/dev/null
-  fi
-
-  echo "dtoverlay=vc4-kms-dsi-7inch${touch_params}" | sudo tee -a "$config" >/dev/null
-
-  log "Rotation set via:"
-  log "  ${cmdline}: video=DSI-1:800x480@60,rotate=${DSI_ROTATE_DEG}"
-  log "  ${config}:  dtoverlay=vc4-kms-dsi-7inch${touch_params}"
-  log "Reboot REQUIRED for rotation to take effect."
 }
 
-# --- main ---
+cleanup_old_kernel_rotation() {
+  # Optional cleanup:
+  # If you previously added lcd_rotate= or cmdline video=DSI-1:...rotate=...
+  # those can conflict or be confusing. We remove them to rely on Wayland rotation.
+  if [[ -f "$BOOT_CONFIG" ]]; then
+    backup_file "$BOOT_CONFIG"
+    # remove lcd_rotate lines
+    sudo sed -i -E '/^\s*lcd_rotate\s*=/d' "$BOOT_CONFIG" || true
+    # remove vc4-kms-dsi-7inch lines that include touch params swapxy/invx/invy
+    # then ensure the base overlay exists without params (safe)
+    if sudo grep -qE '^\s*dtoverlay=vc4-kms-dsi-7inch' "$BOOT_CONFIG"; then
+      sudo sed -i -E '/^\s*dtoverlay=vc4-kms-dsi-7inch.*(swapxy|invx|invy).*/d' "$BOOT_CONFIG" || true
+      if ! sudo grep -qE '^\s*dtoverlay=vc4-kms-dsi-7inch(\s|$)' "$BOOT_CONFIG"; then
+        echo "dtoverlay=vc4-kms-dsi-7inch" | sudo tee -a "$BOOT_CONFIG" >/dev/null
+      fi
+    fi
+  fi
+
+  if [[ -f "$CMDLINE" ]]; then
+    backup_file "$CMDLINE"
+    local current
+    current="$(sudo cat "$CMDLINE")"
+    # remove any existing video=DSI-1:... token
+    current="$(echo "$current" \
+      | sed -E 's/(^| )video=DSI-1:[^ ]+//g' \
+      | sed -E 's/  +/ /g' \
+      | sed -E 's/^ //; s/ $//')"
+    echo "$current" | sudo tee "$CMDLINE" >/dev/null
+  fi
+}
+
+install_labwc_rotation_autostart() {
+  # labwc reads ~/.config/labwc/autostart and runs it on session start.
+  # We set rotation there using wlr-randr.
+  local labwc_dir="${TARGET_HOME}/.config/labwc"
+  local labwc_autostart="${labwc_dir}/autostart"
+
+  log "Installing labwc autostart rotation (Wayland) for output ${WAYLAND_OUTPUT} -> ${ROTATE_DEG}°"
+  mkdir -p "$labwc_dir"
+
+  cat > "$labwc_autostart" <<EOF
+#!/usr/bin/env bash
+set -e
+
+# labwc autostart (runs inside the Wayland session)
+# Rotate output using wlr-randr.
+# If the output name differs, run: wlr-randr (in a terminal on the Pi) and update it.
+
+# Ensure we have a runtime dir (normally already set inside session)
+export XDG_RUNTIME_DIR="\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}"
+export WAYLAND_DISPLAY="\${WAYLAND_DISPLAY:-\$(ls "\$XDG_RUNTIME_DIR" 2>/dev/null | grep -E '^wayland-' | head -n1)}"
+
+# Try a few times because outputs may appear slightly after compositor start.
+for i in \$(seq 1 30); do
+  wlr-randr --output "${WAYLAND_OUTPUT}" --transform ${ROTATE_DEG} >/dev/null 2>&1 && exit 0
+  sleep 0.3
+done
+
+exit 0
+EOF
+
+  chmod +x "$labwc_autostart"
+  chown -R "${TARGET_USER}:${TARGET_USER}" "$labwc_dir"
+}
+
+# --------------------------
+# MAIN
+# --------------------------
 require_apt
+validate_rotation
 
 log "Installing system dependencies..."
 sudo apt update
@@ -150,10 +167,16 @@ log "Using Chromium package: ${CHROMIUM_PKG}"
 sudo apt install -y \
   python3 python3-venv python3-pip \
   "${CHROMIUM_PKG}" \
-  unclutter wmctrl xdotool curl
+  unclutter wmctrl xdotool curl \
+  wlr-randr
 
-# Correct rotation method for your setup (Trixie + labwc + DSI official touchscreen)
-set_dsi_rotation_kms
+# If you previously tried kernel/config rotation + touch params, clean them up now.
+# This keeps things consistent: Wayland handles the display rotation.
+log "Cleaning up old kernel/cmdline rotation and touch param hacks (if present)..."
+cleanup_old_kernel_rotation
+
+# Install Wayland/labwc rotation
+install_labwc_rotation_autostart
 
 log "Preparing Python virtual environment..."
 if [[ ! -d "${VENV_DIR}" ]]; then
@@ -187,20 +210,21 @@ HIDE_CURSOR="${HIDE_CURSOR:-1}"
 BROWSER_FULLSCREEN="${BROWSER_FULLSCREEN:-1}"
 
 # IMPORTANT (Trixie + labwc/Wayland):
-# Display + touch rotation is handled at boot via:
-#  - /boot/firmware/cmdline.txt: video=DSI-1:800x480@60,rotate=...
-#  - /boot/firmware/config.txt:  dtoverlay=vc4-kms-dsi-7inch,...
+# Display rotation is handled by labwc using wlr-randr via:
+#   ~/.config/labwc/autostart
 # Do NOT use xrandr/xinput rotation here.
 
+# Chromium runs under Xwayland in many labwc setups.
+# These env vars help tools that still speak X11 (xset/wmctrl/xdotool).
 export DISPLAY=:0
 export XAUTHORITY="$HOME/.Xauthority"
 
-# Wait for Xwayland (Chromium + wmctrl/xdotool rely on this)
-for i in {1..80}; do
+# Wait for Xwayland DISPLAY to exist (Chromium + wmctrl/xdotool rely on this)
+for i in {1..120}; do
   if xset q >/dev/null 2>&1; then
     break
   fi
-  sleep 1
+  sleep 0.5
 done
 
 if [[ "$HIDE_CURSOR" == "1" ]]; then
@@ -220,15 +244,15 @@ pkill -f "python3 app.py" || true
 python3 app.py &
 
 # Wait for backend
-for i in {1..40}; do
+for i in {1..60}; do
   curl -s "$URL" >/dev/null && break
-  sleep 1
+  sleep 0.5
 done
 
 # Start Chromium kiosk
 pkill -u "$USER" -x chromium || true
 pkill -u "$USER" -x chromium-browser || true
-sleep 1
+sleep 0.5
 
 CHROMIUM_CMD=""
 if command -v chromium-browser >/dev/null 2>&1; then
@@ -256,7 +280,6 @@ fi
 # Best-effort fullscreen (Wayland limits WM control; Xwayland often still allows this)
 if [[ "$BROWSER_FULLSCREEN" == "1" ]]; then
   sleep 2
-  # Try by title first, then by class
   wmctrl -r "Chromium" -b add,fullscreen 2>/dev/null || true
   WIN_ID="$(xdotool search --onlyvisible --class chromium 2>/dev/null | head -n1 || true)"
   if [[ -n "${WIN_ID}" ]]; then
@@ -280,7 +303,7 @@ SETUP_EOF
 chmod +x "${SETUP_SCRIPT}"
 chown "${TARGET_USER}:${TARGET_USER}" "${SETUP_SCRIPT}"
 
-log "Installing user systemd service: ${SERVICE_FILE}"
+log "Installing systemd USER service: ${SERVICE_FILE}"
 mkdir -p "${SERVICE_DIR}"
 cat > "${SERVICE_FILE}" <<SERVICE_EOF
 [Unit]
@@ -316,43 +339,6 @@ else
   log "  systemctl --user enable ${APP_NAME}.service"
 fi
 
-log "Installing system service for boot autostart: ${SYSTEM_SERVICE_FILE}"
-cat > "${SYSTEM_SERVICE_FILE}" <<SYSTEM_SERVICE_EOF
-[Unit]
-Description=AmuseTechTools Kiosk (system boot)
-After=network-online.target display-manager.service graphical.target
-Wants=network-online.target display-manager.service graphical.target
-
-[Service]
-Type=simple
-User=${TARGET_USER}
-Group=${TARGET_USER}
-WorkingDirectory=${APP_DIR}
-ExecStart=${START_SCRIPT}
-Restart=on-failure
-Environment=DISPLAY=:0
-Environment=XAUTHORITY=${TARGET_HOME}/.Xauthority
-Environment=HIDE_CURSOR=${HIDE_CURSOR}
-Environment=BROWSER_FULLSCREEN=${BROWSER_FULLSCREEN}
-
-[Install]
-WantedBy=multi-user.target
-SYSTEM_SERVICE_EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable "${APP_NAME}.service"
-
-log "Creating desktop autostart entry: ${AUTOSTART_FILE}"
-mkdir -p "${AUTOSTART_DIR}"
-cat > "${AUTOSTART_FILE}" <<AUTOSTART_EOF
-[Desktop Entry]
-Type=Application
-Name=AmuseTechTools Autostart
-Exec=systemctl --user start ${APP_NAME}.service
-X-GNOME-Autostart-enabled=true
-AUTOSTART_EOF
-chown "${TARGET_USER}:${TARGET_USER}" "${AUTOSTART_FILE}"
-
 log "Creating desktop launcher: ${DESKTOP_FILE}"
 mkdir -p "${DESKTOP_DIR}"
 cat > "${DESKTOP_FILE}" <<DESKTOP_EOF
@@ -368,17 +354,10 @@ DESKTOP_EOF
 chmod +x "${DESKTOP_FILE}"
 chown "${TARGET_USER}:${TARGET_USER}" "${DESKTOP_FILE}"
 
-log "Enabling user linger for boot autostart"
-if command -v loginctl >/dev/null 2>&1; then
-  sudo loginctl enable-linger "${TARGET_USER}" || true
-else
-  log "loginctl not available; skipping linger setup"
-fi
-
 log "Install complete."
-log "REBOOT REQUIRED for DSI rotation to apply."
-log "Start now:   systemctl --user start ${APP_NAME}.service"
-log "System boot autostart enabled: sudo systemctl status ${APP_NAME}.service"
-log "Desktop icon: ${DESKTOP_FILE}"
-log "View logs:   journalctl --user -u ${APP_NAME}.service -f"
-log "Rotation set: /boot/firmware/cmdline.txt + /boot/firmware/config.txt (DSI_ROTATE_DEG=${DSI_ROTATE_DEG})"
+log "Rotation is handled by labwc autostart:"
+log "  ${TARGET_HOME}/.config/labwc/autostart"
+log "Configured: output=${WAYLAND_OUTPUT} transform=${ROTATE_DEG}"
+log "Start now: systemctl --user start ${APP_NAME}.service"
+log "Logs: journalctl --user -u ${APP_NAME}.service -f"
+log "If already logged in, log out/in or restart labwc to apply rotation."
