@@ -20,5 +20,22 @@ def shutdown():
 
 @bp.route("/update", methods=["POST"])
 def update():
-    subprocess.Popen(["git", "-C", "/home/att/AmuseTechTools", "pull"])
-    return jsonify({"status": "ok"})
+    """
+    Appliance mode (/system/update):
+      - discard any local changes
+      - match remote origin/main exactly
+      - restart service after returning HTTP 200
+    """
+    import subprocess
+
+    cmd = """
+    set -euo pipefail
+    cd ~/AmuseTechTools
+    git fetch --prune origin
+    git reset --hard origin/main
+    git clean -fd
+    # restart the kiosk service after a short delay so the HTTP response is sent
+    nohup bash -lc "sleep 1; systemctl --user restart amuse-tech-tools.service" >/dev/null 2>&1 &
+    """
+    subprocess.Popen(["bash", "-lc", cmd])
+    return jsonify({"status": "ok", "mode": "appliance"})
