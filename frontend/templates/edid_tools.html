@@ -169,6 +169,8 @@
     setTimeout(() => {
       if (!isTextEntry(document.activeElement)) oskHide();
     }, 0);
+	  document.addEventListener('pointerdown', (e) => {
+    if (isTextEntry(e.target)) oskShow();
   });
 </script>
 {% endblock %}
