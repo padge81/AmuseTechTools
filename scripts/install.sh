@@ -41,7 +41,7 @@ BROWSER_FULLSCREEN="${BROWSER_FULLSCREEN:-1}"
 
 # Rotation: Wayland (labwc) output transform in degrees
 # Supported by wlr-randr: 0, 90, 180, 270
-ROTATE_DEG="${ROTATE_DEG:-90}"
+ROTATE_DEG="${ROTATE_DEG:-270}"
 WAYLAND_OUTPUT="${WAYLAND_OUTPUT:-DSI-1}"
 
 BOOT_CONFIG="/boot/firmware/config.txt"
