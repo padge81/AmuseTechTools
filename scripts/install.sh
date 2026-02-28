@@ -120,9 +120,14 @@ install_labwc_rotation_autostart
 
 log "Preparing Python virtual environment..."
 
-if [[ ! -d "${VENV_DIR}" ]]; then
-  sudo -u "${TARGET_USER}" python3 -m venv "${VENV_DIR}"
+# Always recreate venv cleanly to avoid contamination
+if [[ -d "${VENV_DIR}" ]]; then
+  log "Removing existing virtual environment..."
+  rm -rf "${VENV_DIR}"
 fi
+
+log "Creating virtual environment (with system site packages)..."
+sudo -u "${TARGET_USER}" python3 -m venv --system-site-packages "${VENV_DIR}"
 
 run_as_target_user "${VENV_DIR}/bin/pip" install --upgrade pip
 
