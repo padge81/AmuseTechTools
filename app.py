@@ -58,9 +58,12 @@ def create_app():
 
 if __name__ == "__main__":
     debug = os.environ.get("FLASK_DEBUG") == "1"
+
+    app = create_app()
+
     app.run(
         host="0.0.0.0",
         port=8080,
         debug=debug,
-        use_reloader=debug
+        use_reloader=debug,
     )
