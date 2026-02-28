@@ -1,7 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container" style="max-width: 900px;">
-    <h1>Pattern Generator</h1>
+
+<div class="page">
+
+    <!-- ============================= -->
+    <!-- Top navigation -->
+    <!-- ============================= -->
+<div class="top-nav">
+    <img src="/static/images/btn-back.png" class="nav-btn" onclick="navBack()">
+
+    <h1 class="page-title">Insert Title Here</h1>
+
+    <img src="/static/images/btn-home.png" class="nav-btn" onclick="navHome()">
+</div>
+
+<img src="/static/images/divider.png" class="divider">
+
     <p style="opacity:0.85;">A) Select display. B) Take/Release selected display. C) Full-screen solid colour. D) Colour bars.</p>
 
     <label for="screen_select">Available Displays</label>
