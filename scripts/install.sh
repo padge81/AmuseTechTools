@@ -171,7 +171,7 @@ APP_DIR="$HOME/AmuseTechTools"
 VENV_DIR="$APP_DIR/.venv"
 URL="http://127.0.0.1:8080"
 
-export DISPLAY=:0
+# export DISPLAY=:0
 export XAUTHORITY="$HOME/.Xauthority"
 
 for i in {1..120}; do
@@ -204,6 +204,8 @@ sleep 0.5
 CHROMIUM_CMD="$(command -v chromium-browser || command -v chromium)"
 
 "$CHROMIUM_CMD" \
+  --enable-features=UseOzonePlatform \
+  --ozone-platform=wayland \
   --kiosk \
   --start-fullscreen \
   --password-store=basic \
@@ -212,12 +214,14 @@ CHROMIUM_CMD="$(command -v chromium-browser || command -v chromium)"
   --disable-session-crashed-bubble \
   --disable-translate \
   "$URL" &
-# Start on-screen keyboard (X11): onboard
+  
+# Start on-screen keyboard (Wayland)
 export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+export WAYLAND_DISPLAY="wayland-0"
 
-pkill -x onboard 2>/dev/null || true
-onboard >/dev/null 2>&1 &
+pkill -x wvkbd-mobintl 2>/dev/null || true
+wvkbd-mobintl --hidden -H 280 -L 200 &
+
 sleep 1
 wmctrl -xa "onboard.Onboard" -b add,hidden 2>/dev/null || true
 
