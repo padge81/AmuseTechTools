@@ -125,8 +125,10 @@ sudo apt install -y \
   python3 python3-venv python3-pip \
   python3-smbus i2c-tools \
   "${CHROMIUM_PKG}" \
-	onboard \
-	unclutter wmctrl xdotool curl wlr-randr
+  dbus-user-session \
+  onboard \
+  x11-utils \
+  unclutter wmctrl xdotool curl wlr-randr
 
 install_labwc_rotation_autostart
 
@@ -211,10 +213,11 @@ CHROMIUM_CMD="$(command -v chromium-browser || command -v chromium)"
   --disable-translate \
   "$URL" &
 # Start on-screen keyboard (X11): onboard
-pkill -x onboard 2>/dev/null || true
-onboard &
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
 
-# Give it a moment to create its window, then hide it (we'll show/hide via wmctrl)
+pkill -x onboard 2>/dev/null || true
+onboard >/dev/null 2>&1 &
 sleep 1
 wmctrl -xa "onboard.Onboard" -b add,hidden 2>/dev/null || true
 
