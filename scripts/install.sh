@@ -239,8 +239,9 @@ Wants=graphical-session.target
 Type=simple
 ExecStart=${START_SCRIPT}
 Restart=on-failure
-Environment=DISPLAY=:0
-Environment=XAUTHORITY=%h/.Xauthority
+Environment=XDG_RUNTIME_DIR=/run/user/%U
+Environment=WAYLAND_DISPLAY=wayland-0
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%U/bus
 
 [Install]
 WantedBy=default.target
