@@ -126,7 +126,6 @@ sudo apt install -y \
   python3-smbus i2c-tools \
   "${CHROMIUM_PKG}" \
   dbus-user-session \
-  onboard \
   x11-utils \
   unclutter wmctrl xdotool curl wlr-randr
 
@@ -204,8 +203,10 @@ sleep 0.5
 CHROMIUM_CMD="$(command -v chromium-browser || command -v chromium)"
 
 "$CHROMIUM_CMD" \
-  --enable-features=UseOzonePlatform \
+  --enable-features=UseOzonePlatform,VirtualKeyboard \
   --ozone-platform=wayland \
+  --enable-touch-events \
+  --touch-events=enabled \
   --kiosk \
   --start-fullscreen \
   --password-store=basic \
@@ -215,15 +216,8 @@ CHROMIUM_CMD="$(command -v chromium-browser || command -v chromium)"
   --disable-translate \
   "$URL" &
   
-# Start on-screen keyboard (Wayland)
-export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-export WAYLAND_DISPLAY="wayland-0"
-
-pkill -x wvkbd-mobintl 2>/dev/null || true
-wvkbd-mobintl --hidden -H 280 -L 200 &
-
 sleep 1
-wmctrl -xa "onboard.Onboard" -b add,hidden 2>/dev/null || true
+
 
 wait
 START_EOF

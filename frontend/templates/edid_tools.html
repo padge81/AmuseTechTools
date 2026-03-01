@@ -149,31 +149,5 @@
 <!-- ============================= -->
 <script src="{{ url_for('static', filename='js/edid.js') }}"></script>
 
-<script>
-  function oskShow() { fetch('/system/osk/show', { method: 'POST' }).catch(() => {}); }
-  function oskHide() { fetch('/system/osk/hide', { method: 'POST' }).catch(() => {}); }
 
-  function isTextEntry(el) {
-    if (!el) return false;
-    if (el.tagName === 'TEXTAREA') return true;
-    if (el.tagName !== 'INPUT') return false;
-    const t = (el.getAttribute('type') || 'text').toLowerCase();
-    return ['text','number','password','email','search','tel','url'].includes(t);
-  }
-
-  document.addEventListener('focusin', (e) => {
-    if (isTextEntry(e.target)) oskShow();
-  });
-
-  document.addEventListener('focusout', () => {
-    setTimeout(() => {
-      if (!isTextEntry(document.activeElement)) oskHide();
-    }, 0);
-  });
-
-  // Helps on some touch setups where focus doesn't fire reliably on first tap
-  document.addEventListener('pointerdown', (e) => {
-    if (isTextEntry(e.target)) oskShow();
-  });
-</script>
 {% endblock %}
