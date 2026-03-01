@@ -171,8 +171,6 @@ VENV_DIR="$APP_DIR/.venv"
 URL="http://127.0.0.1:8080"
 
 
-export XAUTHORITY="$HOME/.Xauthority"
-
 for i in {1..120}; do
   xset q >/dev/null 2>&1 && break
   sleep 0.5
@@ -233,12 +231,15 @@ cat > "${SERVICE_FILE}" <<SERVICE_EOF
 [Unit]
 Description=AmuseTechTools Kiosk
 After=graphical-session.target
-Wants=graphical-session.target
+Requires=graphical-session.target
 
 [Service]
 Type=simple
+ExecStartPre=/bin/sleep 2
 ExecStart=${START_SCRIPT}
 Restart=on-failure
+
+# Proper Wayland session environment
 Environment=XDG_RUNTIME_DIR=/run/user/%U
 Environment=WAYLAND_DISPLAY=wayland-0
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%U/bus
