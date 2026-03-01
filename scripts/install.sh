@@ -170,7 +170,7 @@ APP_DIR="$HOME/AmuseTechTools"
 VENV_DIR="$APP_DIR/.venv"
 URL="http://127.0.0.1:8080"
 
-# export DISPLAY=:0
+
 export XAUTHORITY="$HOME/.Xauthority"
 
 for i in {1..120}; do
