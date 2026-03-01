@@ -13,6 +13,12 @@ URL="http://127.0.0.1:8080"
 export DISPLAY=:0
 export XAUTHORITY="$HOME/.Xauthority"
 
+echo "DISPLAY=$DISPLAY"
+echo "WAYLAND_DISPLAY=${WAYLAND_DISPLAY-}"
+echo "XDG_SESSION_TYPE=${XDG_SESSION_TYPE-}"
+echo "XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR-}"
+loginctl show-session "$XDG_SESSION_ID" -p Type -p Display -p Remote -p Name 2>/dev/null || true
+
 # Wait for Xwayland
 for i in {1..120}; do
   if xset q >/dev/null 2>&1; then
