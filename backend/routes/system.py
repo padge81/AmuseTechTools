@@ -5,7 +5,7 @@ bp = Blueprint("system", __name__, url_prefix="/system")
 
 
     
-@bp.route("/exit", methods=["POST"])
+@bp.route("/exit_browser", methods=["POST"])
 def exit_browser():
     subprocess.Popen(["pkill", "-f", "chromium"])
     return jsonify({"status": "ok"})
