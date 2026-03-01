@@ -67,6 +67,8 @@ sleep 0.5
 CHROMIUM_CMD="$(command -v chromium-browser || command -v chromium)"
 
 "$CHROMIUM_CMD" \
+  --enable-features=UseOzonePlatform \
+  --ozone-platform=wayland \
   --kiosk \
   --start-fullscreen \
   --password-store=basic \
@@ -75,5 +77,9 @@ CHROMIUM_CMD="$(command -v chromium-browser || command -v chromium)"
   --disable-session-crashed-bubble \
   --disable-translate \
   "$URL" &
+
+# Start on-screen keyboard hidden; control via signals
+pkill -x wvkbd-mobintl 2>/dev/null || true
+wvkbd-mobintl --hidden -H 280 -L 200 &
 
 wait

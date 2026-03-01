@@ -147,8 +147,7 @@
 <!-- ============================= -->
 <!-- Scripts -->
 <!-- ============================= -->
-<script src="{{ url_for('static', filename='js/edid.js') }}"></script>
-<script>
+<script src="{{ url_for('static', filename='js/edid.js')
   function oskShow() { fetch('/system/osk/show', {method: 'POST'}).catch(()=>{}); }
   function oskHide() { fetch('/system/osk/hide', {method: 'POST'}).catch(()=>{}); }
 
