@@ -235,6 +235,7 @@ Requires=graphical-session.target
 
 [Service]
 Type=simple
+ExecStartPre=/usr/bin/systemctl --user import-environment WAYLAND_DISPLAY XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS
 ExecStartPre=/bin/sleep 2
 ExecStart=${START_SCRIPT}
 Restart=on-failure
