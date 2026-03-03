@@ -169,18 +169,11 @@ echo "==== AmuseTechTools kiosk start: $(date) ===="
 APP_DIR="$HOME/AmuseTechTools"
 VENV_DIR="$APP_DIR/.venv"
 URL="http://127.0.0.1:8080"
-
-
-for i in {1..120}; do
-  xset q >/dev/null 2>&1 && break
-  sleep 0.5
-done
-
-pkill -f unclutter || true
-unclutter -idle 0 &
+EXT_DIR="$APP_DIR/extensions/chrome-virtual-keyboard"
 
 cd "$APP_DIR"
 
+# Start backend
 if [[ -f "$VENV_DIR/bin/activate" ]]; then
   source "$VENV_DIR/bin/activate"
 fi
@@ -189,11 +182,13 @@ pkill -u "$USER" -f "python3 app.py" || true
 python3 app.py &
 BACKEND_PID=$!
 
+# Wait for backend
 for i in {1..60}; do
   curl -fsS "$URL" >/dev/null 2>&1 && break
   sleep 0.5
 done
 
+# Kill previous Chromium
 pkill -u "$USER" -x chromium || true
 pkill -u "$USER" -x chromium-browser || true
 sleep 0.5
@@ -201,23 +196,18 @@ sleep 0.5
 CHROMIUM_CMD="$(command -v chromium-browser || command -v chromium)"
 
 "$CHROMIUM_CMD" \
-  --enable-features=UseOzonePlatform,VirtualKeyboard \
-  --enable-blink-features=VirtualKeyboard \
+  --enable-features=UseOzonePlatform \
   --ozone-platform=wayland \
   --enable-touch-events \
   --touch-events=enabled \
-  --touch-devices=1 \
-  --kiosk \
   --start-fullscreen \
-  --password-store=basic \
   --noerrdialogs \
   --disable-infobars \
   --disable-session-crashed-bubble \
   --disable-translate \
+  --disable-extensions-except="$EXT_DIR" \
+  --load-extension="$EXT_DIR" \
   "$URL" &
-  
-sleep 1
-
 
 wait
 START_EOF
