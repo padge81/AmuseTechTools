@@ -173,9 +173,24 @@ EXT_DIR="$APP_DIR/extensions/chrome-virtual-keyboard"
 
 cd "$APP_DIR"
 
+echo "Checking extension directory..."
+
+EXT_FLAGS=""
+
+if [[ -d "$EXT_DIR" ]]; then
+    if [[ -f "$EXT_DIR/manifest.json" ]]; then
+        echo "Extension found: $EXT_DIR"
+        EXT_FLAGS="--disable-extensions-except=$EXT_DIR --load-extension=$EXT_DIR"
+    else
+        echo "ERROR: Extension directory exists but manifest.json missing"
+    fi
+else
+    echo "ERROR: Extension directory not found: $EXT_DIR"
+fi
+
 # Start backend
 if [[ -f "$VENV_DIR/bin/activate" ]]; then
-  source "$VENV_DIR/bin/activate"
+    source "$VENV_DIR/bin/activate"
 fi
 
 pkill -u "$USER" -f "python3 app.py" || true
@@ -184,7 +199,10 @@ BACKEND_PID=$!
 
 # Wait for backend
 for i in {1..60}; do
-  curl -fsS "$URL" >/dev/null 2>&1 && break
+  if curl -fsS "$URL" >/dev/null 2>&1; then
+      echo "Backend ready"
+      break
+  fi
   sleep 0.5
 done
 
@@ -194,6 +212,7 @@ pkill -u "$USER" -x chromium-browser || true
 sleep 0.5
 
 CHROMIUM_CMD="$(command -v chromium-browser || command -v chromium)"
+echo "Launching Chromium: $CHROMIUM_CMD"
 
 "$CHROMIUM_CMD" \
   --enable-features=UseOzonePlatform \
@@ -205,8 +224,7 @@ CHROMIUM_CMD="$(command -v chromium-browser || command -v chromium)"
   --disable-infobars \
   --disable-session-crashed-bubble \
   --disable-translate \
-  --disable-extensions-except="$EXT_DIR" \
-  --load-extension="$EXT_DIR" \
+  $EXT_FLAGS \
   "$URL" &
 
 wait
