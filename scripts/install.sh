@@ -202,9 +202,11 @@ CHROMIUM_CMD="$(command -v chromium-browser || command -v chromium)"
 
 "$CHROMIUM_CMD" \
   --enable-features=UseOzonePlatform,VirtualKeyboard \
+  --enable-blink-features=VirtualKeyboard \
   --ozone-platform=wayland \
   --enable-touch-events \
   --touch-events=enabled \
+  --touch-devices=1 \
   --kiosk \
   --start-fullscreen \
   --password-store=basic \
