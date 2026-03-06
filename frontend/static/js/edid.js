@@ -243,6 +243,7 @@ function saveEdid() {
             alert(`Saved as ${data.filename}`);
             input.value = data.filename;
             if (saveBtn) saveBtn.disabled = true;
+			loadEdidFiles();   // refresh dropdown
         })
         .catch(err => {
             alert("Save failed: " + err.toString());
