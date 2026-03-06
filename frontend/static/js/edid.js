@@ -2,11 +2,10 @@
 // Global EDID state
 // ==============================
 let lastEdidHex = null;
-let currentView = "binary";
+let currentView = "binary"; // "binary" | "decoded"
 let usbScanResults = [];
 let selectedPort = null;
 let selectedFile = null;
-let lastFileList = [];
 
 // ==============================
 // Helpers
@@ -33,6 +32,7 @@ function formatHexEdid(hexString) {
 
     return lines.join("\n");
 }
+
 
 // ==============================
 // Connector handling
@@ -70,19 +70,16 @@ function loadConnectors(isRefresh = false) {
         .catch(err => console.error("Connector load failed:", err));
 }
 
+
 // ==============================
 // EDID actions
 // ==============================
 function readEdid() {
-
     const port = getEl("port")?.value;
     const output = getEl("output");
     const matchDiv = getEl("match");
 
     if (!port || !output) return;
-
-    selectedPort = port;
-    updateWriteButton();
 
     setStatus("Reading EDID...");
     output.innerText = "";
@@ -91,7 +88,6 @@ function readEdid() {
     fetch(`/edid/read?connector=${port}`)
         .then(res => res.json())
         .then(data => {
-
             if (data.error) {
                 setStatus("Error");
                 output.innerText = data.error;
@@ -103,44 +99,41 @@ function readEdid() {
 
             renderView();
 
+            // 🔍 Match check
             return fetch("/edid/match", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ edid_hex: lastEdidHex }),
             });
-
         })
-        .then(res => res?.json())
+        .then(res => {
+            if (!res) return;
+            return res.json();
+        })
         .then(result => {
-
             if (!result) return;
 
             const matchDiv = getEl("match");
             const saveBtn = getEl("saveBtn");
 
             if (result.matches && result.matches.length > 0) {
-
                 const names = result.matches.map(m => m.filename).join(", ");
                 if (matchDiv) matchDiv.innerText = `✔ Match found: ${names}`;
                 if (saveBtn) saveBtn.disabled = true;
-
             } else {
-
                 if (matchDiv) matchDiv.innerText = "❌ No matching EDID found";
                 if (saveBtn) saveBtn.disabled = false;
-
             }
         })
         .catch(err => {
-
             setStatus("Error");
             output.innerText = err.toString();
-
         });
 }
 
-function resetView() {
 
+
+function resetView() {
     lastEdidHex = null;
     currentView = "binary";
 
@@ -156,11 +149,11 @@ function resetView() {
     if (binaryRadio) binaryRadio.checked = true;
 }
 
+
 // ==============================
-// View handling
+// View handling  ✅ FIXED
 // ==============================
 function switchView() {
-
     const selected = document.querySelector("input[name='viewMode']:checked");
     if (!selected) return;
 
@@ -169,8 +162,7 @@ function switchView() {
 }
 
 function renderView() {
-
-    const output = getEl("output");
+    const output = document.getElementById("output");
     if (!output) return;
 
     if (!lastEdidHex) {
@@ -183,6 +175,7 @@ function renderView() {
         return;
     }
 
+    // 🔍 DECODED VIEW (backend-driven)
     output.innerText = "Decoding EDID...";
 
     fetch("/edid/decode", {
@@ -192,19 +185,14 @@ function renderView() {
     })
         .then(res => res.json())
         .then(data => {
-
             if (data.error) {
                 output.innerText = "Decode error:\n" + data.error;
                 return;
             }
-
             output.innerText = data.decoded;
-
         })
         .catch(err => {
-
             output.innerText = "Decode failed:\n" + err.toString();
-
         });
 }
 
@@ -212,9 +200,8 @@ function renderView() {
 // Save EDID
 // ==============================
 function saveEdid() {
-
-    const input = getEl("saveFilename");
-    const saveBtn = getEl("saveBtn");
+    const input = document.getElementById("saveFilename");
+    const saveBtn = document.getElementById("saveBtn");
 
     if (!input) return;
 
@@ -225,6 +212,7 @@ function saveEdid() {
         return;
     }
 
+    // ❌ Reject filenames with dots unless it ends with .bin
     const dotCount = (filename.match(/\./g) || []).length;
 
     if (dotCount > 1 || (dotCount === 1 && !filename.endsWith(".bin"))) {
@@ -232,6 +220,7 @@ function saveEdid() {
         return;
     }
 
+    // ✅ Auto-add .bin if missing
     if (!filename.endsWith(".bin")) {
         filename += ".bin";
     }
@@ -246,20 +235,14 @@ function saveEdid() {
     })
         .then(res => res.json())
         .then(data => {
-
             if (data.error) {
                 alert(data.error);
                 return;
             }
 
             alert(`Saved as ${data.filename}`);
-
             input.value = data.filename;
-
             if (saveBtn) saveBtn.disabled = true;
-
-            loadEdidFiles(data.filename); // refresh dropdown
-
         })
         .catch(err => {
             alert("Save failed: " + err.toString());
@@ -267,68 +250,176 @@ function saveEdid() {
 }
 
 // ==============================
-// EDID File List
+// USB IMPORT EXPORT
 // ==============================
-function loadEdidFiles(selectFile = null) {
+//Load USB Drives
+function loadUsbDrives() {
+    const sel = getEl("usbDrive");
+    const status = getEl("usbStatus");
+    if (!sel || !status) return;
 
-    const sel = getEl("edidFile");
-    if (!sel) return;
-
-    fetch("/edid/files")
+    fetch("/usb/status")
         .then(r => r.json())
-        .then(data => {
+        .then(drives => {
+            sel.innerHTML = "";
 
-            // support both formats
-            const files = Array.isArray(data) ? data : (data.files || []);
+            if (!drives.length) {
+                status.innerText = "No USB drives found";
+                return;
+            }
 
-            if (JSON.stringify(files) === JSON.stringify(lastFileList)) return;
-            lastFileList = files;
-
-            const previous = selectFile || sel.value || selectedFile || "";
-
-            sel.innerHTML = '<option value="">-- select EDID --</option>';
-
-            files.forEach(f => {
-
+            drives.forEach(d => {
                 const opt = document.createElement("option");
-                opt.value = f;
-                opt.text = f;
-
-                if (f === previous) opt.selected = true;
-
+                opt.value = d.path;   // ✅ MUST be string
+                opt.textContent = d.name;
                 sel.appendChild(opt);
-
             });
 
-            selectedFile = sel.value || null;
-            updateWriteButton();
+            status.innerText = "USB ready";
         })
         .catch(err => {
-            console.error("Failed to load EDID files:", err);
+            console.error(err);
+            status.innerText = "USB scan failed";
         });
+}
+
+
+//IMPORT
+
+function importEdids() {
+    const mount = getEl("usbDrive")?.value;
+    const status = getEl("usbStatus");
+
+    if (!mount) {
+        alert("Please select a USB drive");
+        return;
+    }
+
+    // 1️⃣ Preview
+    fetch("/usb/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mount, dry_run: true })
+    })
+    .then(r => r.json())
+    .then(summary => {
+        const msg =
+`Import from USB?
+
+New files: ${summary.new}
+Skipped (already exist): ${summary.skipped}
+
+Proceed?`;
+
+        if (!confirm(msg)) return;
+
+        // 2️⃣ Commit
+        return fetch("/usb/import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mount, dry_run: false })
+        });
+    })
+    .then(r => r?.json())
+    .then(result => {
+        if (!result) return;
+        status.innerText = `Import complete: ${result.new} new, ${result.skipped} skipped`;
+    })
+    .catch(err => {
+        console.error(err);
+        status.innerText = "Import failed";
+    });
+}
+
+//EXPORT
+
+function exportEdids() {
+    const mount = getEl("usbDrive")?.value;
+    const status = getEl("usbStatus");
+
+    if (!mount) {
+        alert("Please select a USB drive");
+        return;
+    }
+
+    // 1️⃣ Preview
+    fetch("/usb/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mount, dry_run: true })
+    })
+    .then(r => r.json())
+    .then(summary => {
+        const msg =
+`Export to USB?
+
+New files: ${summary.new}
+Skipped (already exist): ${summary.skipped}
+
+Proceed?`;
+
+        if (!confirm(msg)) return;
+
+        // 2️⃣ Commit
+        return fetch("/usb/export", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mount, dry_run: false })
+        });
+    })
+    .then(r => r?.json())
+    .then(result => {
+        if (!result) return;
+        status.innerText = `Export complete: ${result.new} new, ${result.skipped} skipped`;
+    })
+    .catch(err => {
+        console.error(err);
+        status.innerText = "Export failed";
+    });
 }
 
 // ==============================
 // Write to EDID device
 // ==============================
-function onFileSelect() {
 
+//Load EDID File List
+function loadEdidFiles() {
+    const sel = getEl("edidFile");
+    if (!sel) return;
+
+    fetch("/edid/files")
+        .then(r => r.json())
+        .then(files => {
+            sel.innerHTML = '<option value="">-- select EDID --</option>';
+            files.forEach(f => {
+                const opt = document.createElement("option");
+                opt.value = f;
+                opt.text = f;
+                sel.appendChild(opt);
+            });
+        });
+}
+
+//Track Selections
+function onFileSelect() {
     selectedFile = getEl("edidFile").value || null;
     updateWriteButton();
 }
 
+// Modify readEdid() succes path
+selectedPort = port;
+updateWriteButton();
+
+//Enable Logic
 function updateWriteButton() {
-
     const btn = getEl("writeBtn");
-    if (!btn) return;
-
     btn.disabled = !(selectedPort && lastEdidHex && selectedFile);
 }
 
+//Write Handler
 function writeEdid() {
-
-    const connector = getEl("port").value;
-    const filename = getEl("edidFile").value;
+    const connector = document.getElementById("port").value;
+    const filename = document.getElementById("edidFile").value;
 
     if (!connector || !filename) {
         alert("Select a connector and EDID file first");
@@ -340,6 +431,7 @@ function writeEdid() {
         `Connector: ${connector}\n` +
         `EDID file: ${filename}\n\n` +
         "This will overwrite the EDID EEPROM.\n" +
+        "A power cycle may be required to revert.\n\n" +
         "Proceed?"
     )) return;
 
@@ -347,49 +439,47 @@ function writeEdid() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            connector,
-            filename,
+            connector: connector,
+            filename: filename,
             force: true
         })
     })
     .then(r => r.json())
-    .then(res => {
+	.then(res => {
+		if (res.error) {
+			alert(res.error);
+			return;
+		}
 
-        if (res.error) {
-            alert(res.error);
-            return;
-        }
+		const msg =
+			"EDID written successfully!\n\n" +
+			`Connector: ${res.connector}\n` +
+			`I2C bus: ${res.bus}\n` +
+			`Verified (I2C): ${res.verified_i2c ? "Yes" : "No"}\n` +
+			`Verified (DRM): ${res.verified_drm ? "Yes" : "No"}`
 
-        const msg =
-            "EDID written successfully!\n\n" +
-            `Connector: ${res.connector}\n` +
-            `I2C bus: ${res.bus}\n` +
-            `Verified (I2C): ${res.verified_i2c ? "Yes" : "No"}\n` +
-            `Verified (DRM): ${res.verified_drm ? "Yes" : "No"}`;
-
-        if (confirm(msg)) {
-            readEdid();
-        }
-
-    });
+		if (confirm(msg)) {
+			// Trigger a fresh EDID read
+			readEdid();
+		}
+	});
 }
 
-// ==============================
-// Navigation
-// ==============================
-window.navHome = () => window.location.href = "/";
-window.navBack = () => window.history.back();
+// Navigation buttons (global)
+window.navHome = function () {
+    window.location.href = "/";
+};
+
+window.navBack = function () {
+    window.history.back();
+};
+
 
 // ==============================
 // Init
 // ==============================
 document.addEventListener("DOMContentLoaded", () => {
-
     loadConnectors();
-    loadUsbDrives();
-    loadEdidFiles();
-
-    // auto refresh file list
-    setInterval(loadEdidFiles, 5000);
-
+	loadUsbDrives();
+	loadEdidFiles();
 });
