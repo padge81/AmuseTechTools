@@ -276,12 +276,15 @@ function loadEdidFiles(selectFile = null) {
 
     fetch("/edid/files")
         .then(r => r.json())
-        .then(files => {
+        .then(data => {
+
+            // support both formats
+            const files = Array.isArray(data) ? data : (data.files || []);
 
             if (JSON.stringify(files) === JSON.stringify(lastFileList)) return;
             lastFileList = files;
 
-            const previous = selectFile || sel.value;
+            const previous = selectFile || sel.value || selectedFile || "";
 
             sel.innerHTML = '<option value="">-- select EDID --</option>';
 
@@ -297,6 +300,11 @@ function loadEdidFiles(selectFile = null) {
 
             });
 
+            selectedFile = sel.value || null;
+            updateWriteButton();
+        })
+        .catch(err => {
+            console.error("Failed to load EDID files:", err);
         });
 }
 
